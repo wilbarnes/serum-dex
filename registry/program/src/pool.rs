@@ -1,3 +1,4 @@
+use borsh::de::BorshDeserialize;
 use serum_common::pack::Pack;
 use serum_pool_schema::{Basket, PoolAction};
 use serum_registry::accounts::entity::PoolPrices;
@@ -12,6 +13,8 @@ pub struct Pool<'a, 'b> {
     is_mega: bool,
     accounts: PoolAccounts<'a, 'b>,
     mega_accounts: PoolAccounts<'a, 'b>,
+    // Represents redemption prices for all instructions except `stake`,
+    // in which case we use the creation prices.
     prices: PoolPrices,
 }
 
@@ -41,9 +44,9 @@ impl<'a, 'b> Pool<'a, 'b> {
     ) -> Result<Self, RegistryError> {
         let acc_infos = acc_infos.collect::<Vec<_>>();
         let is_mega = match acc_infos.len() {
-            17 => true,
-            16 => false,
-            13 => false, // Doesn't matter since 13 => *not* PoolConfig::Execute.
+            16 => true,
+            15 => false,
+            12 => false, // true/false doesn't matter since 12 => *not* PoolConfig::Execute.
             _ => return Err(RegistryErrorCode::InvalidPoolAccounts)?,
         };
 
@@ -52,16 +55,13 @@ impl<'a, 'b> Pool<'a, 'b> {
         // Program ids.
         let pool_program_id_acc_info = next_account_info(acc_infos)?;
         let retbuf_program_acc_info = next_account_info(acc_infos)?;
+        let retbuf_acc_info = next_account_info(acc_infos)?;
 
         // SRM pool.
         let pool_acc_info = next_account_info(acc_infos)?;
         let pool_tok_mint_acc_info = next_account_info(acc_infos)?;
         let pool_asset_vault_acc_infos = vec![next_account_info(acc_infos)?];
         let pool_vault_authority_acc_info = next_account_info(acc_infos)?;
-        let retbuf_acc_info = next_account_info(acc_infos)?;
-        // TODO: use the same retbuf account for each of the pools?
-        //       Currently use different accounts since they will have
-        //       different sizes (and unpack checks length).
 
         // MSRM pool.
         let mega_pool_acc_info = next_account_info(acc_infos)?;
@@ -69,7 +69,6 @@ impl<'a, 'b> Pool<'a, 'b> {
         let mut mega_pool_asset_vault_acc_infos = vec![next_account_info(acc_infos)?];
         mega_pool_asset_vault_acc_infos.push(next_account_info(acc_infos)?);
         let mega_pool_vault_authority_acc_info = next_account_info(acc_infos)?;
-        let mega_retbuf_acc_info = next_account_info(acc_infos)?;
 
         // Transact specific params.
         let mut pool_token_acc_info = None;
@@ -77,9 +76,11 @@ impl<'a, 'b> Pool<'a, 'b> {
         let mut registry_signer_acc_info = None;
         let mut token_program_acc_info = None;
         let mut signer_seeds = None;
+        let mut is_create = false;
         if let PoolConfig::Execute {
             registrar_acc_info: _registrar_acc_info,
             token_program_acc_info: _token_program_acc_info,
+            is_create: _is_create,
         } = cfg
         {
             pool_token_acc_info = Some(next_account_info(acc_infos)?);
@@ -95,6 +96,7 @@ impl<'a, 'b> Pool<'a, 'b> {
 
             let nonce = Registrar::unpack(&_registrar_acc_info.try_borrow_data()?)?.nonce;
             signer_seeds = Some((*_registrar_acc_info.key, nonce));
+            is_create = _is_create;
         }
 
         let (pool, mega_pool) = {
@@ -120,8 +122,8 @@ impl<'a, 'b> Pool<'a, 'b> {
                     pool_tok_mint_acc_info: mega_pool_tok_mint_acc_info,
                     pool_asset_vault_acc_infos: mega_pool_asset_vault_acc_infos,
                     pool_vault_authority_acc_info: mega_pool_vault_authority_acc_info,
-                    retbuf_acc_info: mega_retbuf_acc_info,
-                    retbuf_program_acc_info: retbuf_program_acc_info,
+                    retbuf_acc_info,
+                    retbuf_program_acc_info,
                     beneficiary_acc_info,
                     pool_token_acc_info,
                     registry_vault_acc_infos,
@@ -152,8 +154,8 @@ impl<'a, 'b> Pool<'a, 'b> {
                     pool_tok_mint_acc_info: mega_pool_tok_mint_acc_info,
                     pool_asset_vault_acc_infos: mega_pool_asset_vault_acc_infos,
                     pool_vault_authority_acc_info: mega_pool_vault_authority_acc_info,
-                    retbuf_acc_info: mega_retbuf_acc_info,
-                    retbuf_program_acc_info: retbuf_program_acc_info,
+                    retbuf_acc_info,
+                    retbuf_program_acc_info,
                     beneficiary_acc_info,
                     pool_token_acc_info: None,
                     registry_vault_acc_infos: None,
@@ -165,7 +167,20 @@ impl<'a, 'b> Pool<'a, 'b> {
             }
         };
 
-        let prices = PoolPrices::new(pool.get_basket(1)?, mega_pool.get_basket(1)?);
+        // CPI is expensive. Don't bother fetching both baskets. Just pick the
+        // one that's needed (i.e. for the create/redeem invocation) and live
+        // with the rounding error for everything else (e.g., when estimating
+        // if an Entity is activated or not).
+        let prices = match is_create {
+            false => PoolPrices::new(
+                pool.get_basket(PoolAction::Redeem(1))?,
+                mega_pool.get_basket(PoolAction::Redeem(1))?,
+            ),
+            true => PoolPrices::new(
+                pool.get_basket(PoolAction::Create(1))?,
+                mega_pool.get_basket(PoolAction::Create(1))?,
+            ),
+        };
 
         Ok(Pool {
             accounts: pool,
@@ -269,7 +284,7 @@ impl<'a, 'b> PoolAccounts<'a, 'b> {
         Ok(())
     }
 
-    pub fn get_basket(&self, spt_amount: u64) -> Result<Basket, RegistryError> {
+    pub fn get_basket(&self, action: PoolAction) -> Result<Basket, RegistryError> {
         let instr = serum_stake::instruction::get_basket(
             self.pool_program_id_acc_info.key,
             self.pool_acc_info.key,
@@ -281,7 +296,7 @@ impl<'a, 'b> PoolAccounts<'a, 'b> {
             self.pool_vault_authority_acc_info.key,
             self.retbuf_acc_info.key,
             self.retbuf_program_acc_info.key,
-            spt_amount,
+            action,
         );
         let mut acc_infos = vec![
             self.pool_program_id_acc_info.clone(),
@@ -297,7 +312,8 @@ impl<'a, 'b> PoolAccounts<'a, 'b> {
             self.retbuf_program_acc_info.clone(),
         ]);
         solana_sdk::program::invoke(&instr, &acc_infos)?;
-        Basket::unpack(&self.retbuf_acc_info.try_borrow_data()?).map_err(Into::into)
+        let mut data: &[u8] = &self.retbuf_acc_info.try_borrow_data()?;
+        Basket::deserialize(&mut data).map_err(|_| RegistryErrorCode::RetbufError.into())
     }
 }
 
@@ -305,6 +321,7 @@ pub enum PoolConfig<'a, 'b> {
     Execute {
         registrar_acc_info: &'a AccountInfo<'b>,
         token_program_acc_info: &'a AccountInfo<'b>,
+        is_create: bool,
     },
     GetBasket,
 }

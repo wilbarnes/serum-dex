@@ -589,6 +589,7 @@ dependencies = [
 name = "serum-registry-program"
 version = "0.1.0"
 dependencies = [
+ "borsh",
  "serum-common",
  "serum-pool-schema",
  "serum-registry",

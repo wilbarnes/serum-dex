@@ -56,5 +56,11 @@ pub struct EntityContext<'a, 'b> {
     pub registrar_acc_info: &'a AccountInfo<'b>,
     pub clock_acc_info: &'a AccountInfo<'b>,
     pub program_id: &'a Pubkey,
+    // Should use the redemption (not creation) price since it's conservative
+    // by rounding down instead of up.
+    //
+    // For the `stake` instruction, in practice, we use the creation price,
+    // since we hit the instruction limit, otherwise (lots of CPI between
+    // registry -> pool -> retbuf).
     pub prices: &'a PoolPrices,
 }

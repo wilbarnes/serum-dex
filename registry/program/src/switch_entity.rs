@@ -1,7 +1,6 @@
 use crate::pool::{pool_check, Pool, PoolConfig};
 use serum_common::pack::*;
 use serum_registry::access_control;
-use serum_registry::accounts::entity::PoolPrices;
 use serum_registry::accounts::{Entity, Member, Registrar};
 use serum_registry::error::{RegistryError, RegistryErrorCode};
 use solana_program::info;
@@ -49,8 +48,8 @@ pub fn handler(program_id: &Pubkey, accounts: &[AccountInfo]) -> Result<(), Regi
                                 curr_entity,
                                 new_entity,
                                 member,
+                                pool,
                                 registrar: &registrar,
-                                prices: pool.prices(),
                                 clock: &clock,
                             })
                             .map_err(Into::into)
@@ -109,16 +108,16 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), RegistryError> {
         member,
         curr_entity,
         new_entity,
-        prices,
+        pool,
         registrar,
         clock,
     } = req;
 
     curr_entity.remove(member);
-    curr_entity.transition_activation_if_needed(prices, registrar, clock);
+    curr_entity.transition_activation_if_needed(pool.prices(), registrar, clock);
 
     new_entity.add(member);
-    new_entity.transition_activation_if_needed(prices, registrar, clock);
+    new_entity.transition_activation_if_needed(pool.prices(), registrar, clock);
 
     member.entity = *new_entity_acc_info.key;
 
@@ -147,6 +146,6 @@ struct StateTransitionRequest<'a, 'b, 'c> {
     curr_entity: &'c mut Entity,
     new_entity: &'c mut Entity,
     member: &'c mut Member,
-    prices: &'c PoolPrices,
+    pool: &'c Pool<'a, 'b>,
     clock: &'c Clock,
 }

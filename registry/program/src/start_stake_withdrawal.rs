@@ -38,6 +38,7 @@ pub fn handler(
         let cfg = PoolConfig::Execute {
             registrar_acc_info,
             token_program_acc_info: tok_program_acc_info,
+            is_create: false,
         };
         Pool::parse_accounts(cfg, acc_infos, beneficiary_acc_info)?
     };

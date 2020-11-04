@@ -56,7 +56,7 @@ pub fn get_basket(
     pool_vault_authority: &Pubkey,
     retbuf: &Pubkey,
     retbuf_pid: &Pubkey,
-    spt_amount: u64,
+    action: PoolAction,
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(*pool, false),
@@ -72,8 +72,7 @@ pub fn get_basket(
     ]);
     let req = PoolRequest {
         tag: Default::default(),
-        // Note: create/redeem makes no difference here.
-        inner: PoolRequestInner::GetBasket(PoolAction::Create(spt_amount)),
+        inner: PoolRequestInner::GetBasket(action),
     };
     Instruction {
         program_id: *pool_program_id,

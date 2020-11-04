@@ -29,6 +29,7 @@ pub fn handler(
         let cfg = PoolConfig::Execute {
             registrar_acc_info,
             token_program_acc_info,
+            is_create: true,
         };
         Pool::parse_accounts(cfg, acc_infos, beneficiary_acc_info)?
     };
@@ -37,8 +38,8 @@ pub fn handler(
         entity_acc_info,
         registrar_acc_info,
         clock_acc_info,
-        prices: pool.prices(),
         program_id,
+        prices: pool.prices(),
     };
     with_entity(ctx, &mut |entity: &mut Entity,
                            registrar: &Registrar,

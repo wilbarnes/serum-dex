@@ -51,6 +51,7 @@ pub enum RegistryErrorCode {
     InsufficientBalance = 37,
     InvalidVault = 38,
     InvalidPoolAccounts = 39,
+    RetbufError = 40,
     Unknown = 1000,
 }
 
