@@ -60,7 +60,8 @@ pub fn handler(
                 }
             }
         } else {
-            ctx.get_simple_basket(spt_amount)?
+            // todo: this should be true.
+            ctx.get_simple_basket(spt_amount, false)?
         }
     };
 

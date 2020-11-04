@@ -43,7 +43,7 @@ impl<'a, 'b> Pool<'a, 'b> {
         let is_mega = match acc_infos.len() {
             17 => true,
             16 => false,
-            13 => false, // Doesn't matter since 13 => *not* PoolConfig::Transact.
+            13 => false, // Doesn't matter since 13 => *not* PoolConfig::Execute.
             _ => return Err(RegistryErrorCode::InvalidPoolAccounts)?,
         };
 
@@ -77,7 +77,7 @@ impl<'a, 'b> Pool<'a, 'b> {
         let mut registry_signer_acc_info = None;
         let mut token_program_acc_info = None;
         let mut signer_seeds = None;
-        if let PoolConfig::Transact {
+        if let PoolConfig::Execute {
             registrar_acc_info: _registrar_acc_info,
             token_program_acc_info: _token_program_acc_info,
         } = cfg
@@ -186,7 +186,7 @@ pub struct PoolAccounts<'a, 'b> {
     pub pool_program_id_acc_info: &'a AccountInfo<'b>,
     pub retbuf_acc_info: &'a AccountInfo<'b>,
     pub retbuf_program_acc_info: &'a AccountInfo<'b>,
-    // `transact` only.
+    // `execute` only.
     pub pool_token_acc_info: Option<&'a AccountInfo<'b>>,
     pub registry_vault_acc_infos: Option<Vec<&'a AccountInfo<'b>>>,
     pub registry_signer_acc_info: Option<&'a AccountInfo<'b>>,
@@ -200,14 +200,14 @@ pub struct PoolAccounts<'a, 'b> {
 impl<'a, 'b> PoolAccounts<'a, 'b> {
     #[inline(always)]
     pub fn create(&self, spt_amount: u64) -> Result<(), RegistryError> {
-        self.transact(PoolAction::Create(spt_amount))
+        self.execute(PoolAction::Create(spt_amount))
     }
     #[inline(always)]
     pub fn redeem(&self, spt_amount: u64) -> Result<(), RegistryError> {
-        self.transact(PoolAction::Redeem(spt_amount))
+        self.execute(PoolAction::Redeem(spt_amount))
     }
-    pub fn transact(&self, action: PoolAction) -> Result<(), RegistryError> {
-        let instr = serum_stake::instruction::transact(
+    pub fn execute(&self, action: PoolAction) -> Result<(), RegistryError> {
+        let instr = serum_stake::instruction::execute(
             self.pool_program_id_acc_info.key,
             self.pool_acc_info.key,
             self.pool_tok_mint_acc_info.key,
@@ -302,7 +302,7 @@ impl<'a, 'b> PoolAccounts<'a, 'b> {
 }
 
 pub enum PoolConfig<'a, 'b> {
-    Transact {
+    Execute {
         registrar_acc_info: &'a AccountInfo<'b>,
         token_program_acc_info: &'a AccountInfo<'b>,
     },

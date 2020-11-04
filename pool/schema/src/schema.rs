@@ -114,6 +114,7 @@ lazy_static::lazy_static! {
         account_params: vec![],
         admin_key: Some(Pubkey::new_from_array([0; 32]).into()),
         custom_state: vec![],
+                name: "".to_string(),
     }.try_to_vec().unwrap().len() as u64;
     pub static ref MEGA_POOL_STATE_SIZE: u64 = PoolState {
         tag: Default::default(),
@@ -133,6 +134,7 @@ lazy_static::lazy_static! {
         account_params: vec![],
         admin_key: Some(Pubkey::new_from_array([0; 32]).into()),
         custom_state: vec![],
+        name: "".to_string(),
     }.try_to_vec().unwrap().len() as u64;
 }
 

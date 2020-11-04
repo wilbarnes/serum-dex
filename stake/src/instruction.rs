@@ -2,6 +2,7 @@ use borsh::BorshSerialize;
 use serum_pool_schema::{InitializePoolRequest, PoolAction, PoolRequest, PoolRequestInner};
 use solana_client_gen::solana_sdk::instruction::{AccountMeta, Instruction};
 use solana_client_gen::solana_sdk::pubkey::Pubkey;
+use solana_client_gen::solana_sdk::sysvar;
 use std::convert::TryInto;
 
 pub fn initialize(
@@ -27,6 +28,7 @@ pub fn initialize(
     }
     accounts.append(&mut vec![
         AccountMeta::new_readonly(*pool_vault_authority, false),
+        AccountMeta::new_readonly(sysvar::rent::ID, false),
         // Stake specific accounts.
         AccountMeta::new_readonly(*registrar_vault_authority, false),
     ]);
@@ -35,7 +37,8 @@ pub fn initialize(
         inner: PoolRequestInner::Initialize(InitializePoolRequest {
             vault_signer_nonce,
             assets_length,
-            custom_state_length: 0,
+            pool_name: "".to_string(),
+            custom_data: vec![],
         }),
     };
     Instruction {
@@ -79,7 +82,7 @@ pub fn get_basket(
     }
 }
 
-pub fn transact(
+pub fn execute(
     program_id: &Pubkey,
     pool: &Pubkey,
     pool_token_mint: &Pubkey,
@@ -119,7 +122,7 @@ pub fn transact(
     ]);
     let req = PoolRequest {
         tag: Default::default(),
-        inner: PoolRequestInner::Transact(action),
+        inner: PoolRequestInner::Execute(action),
     };
     Instruction {
         program_id: *program_id,

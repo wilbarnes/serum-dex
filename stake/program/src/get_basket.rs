@@ -26,7 +26,8 @@ pub fn handler(
             };
             Basket { quantities }
         } else {
-            ctx.get_simple_basket(spt_amount)?
+            // TODO: need to round up for creation and down for redemption?
+            ctx.get_simple_basket(spt_amount, false)?
         }
     };
 

@@ -35,7 +35,7 @@ pub fn handler(
     let rent_acc_info = next_account_info(acc_infos)?;
 
     let ref pool = {
-        let cfg = PoolConfig::Transact {
+        let cfg = PoolConfig::Execute {
             registrar_acc_info,
             token_program_acc_info: tok_program_acc_info,
         };

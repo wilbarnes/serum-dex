@@ -41,7 +41,7 @@ pub fn handler(
     }
 
     // Quantities exchanged when redeeming `spt_amount` staking pool tokens.
-    let basket = ctx.get_simple_basket(spt_amount)?;
+    let basket = ctx.get_simple_basket(spt_amount, false)?;
 
     let signer_seeds = vault::signer_seeds(ctx.pool_account.key, &state.vault_signer_nonce);
 
