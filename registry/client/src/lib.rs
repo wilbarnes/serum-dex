@@ -134,7 +134,7 @@ impl Client {
             beneficiary,
             entity,
             depositor,
-            depositor_authority,
+            depositor_authority, // todo: remove this?
             registrar,
             amount,
             pool_program_id,

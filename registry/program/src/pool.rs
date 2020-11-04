@@ -59,6 +59,9 @@ impl<'a, 'b> Pool<'a, 'b> {
         let pool_asset_vault_acc_infos = vec![next_account_info(acc_infos)?];
         let pool_vault_authority_acc_info = next_account_info(acc_infos)?;
         let retbuf_acc_info = next_account_info(acc_infos)?;
+        // TODO: use the same retbuf account for each of the pools?
+        //       Currently use different accounts since they will have
+        //       different sizes (and unpack checks length).
 
         // MSRM pool.
         let mega_pool_acc_info = next_account_info(acc_infos)?;

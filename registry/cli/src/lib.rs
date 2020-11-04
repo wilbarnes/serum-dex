@@ -31,8 +31,22 @@ pub struct Command {
 pub enum SubCommand {
     /// Commands to view registry owned accounts.
     Accounts(AccountsCommand),
-    /// Governance commands requiring an authority key.
-    Gov(GovCommand),
+    /// Initializes a registrar.
+    Init {
+        /// The amount of slots one must wait for a staking withdrawal.
+        #[clap(short, long, default_value = "10000")]
+        withdrawal_timelock: i64,
+        /// Slots in addition to the withdrawal_timelock for deactivation.
+        #[clap(short = 't', long, default_value = "10000")]
+        deactivation_timelock: i64,
+        /// SRM equivalent amount required for node activation.
+        #[clap(short, long, default_value = "10_000_000")]
+        reward_activation_threshold: u64,
+        #[clap(short, long)]
+        pool_program_id: Pubkey,
+        #[clap(short = 'd', long)]
+        pool_token_decimals: u8,
+    },
     /// Creates and registers a delegated staked node entity.
     CreateEntity {
         /// The keypair filepath for the node leader.
@@ -87,40 +101,27 @@ pub enum AccountsCommand {
     },
 }
 
-/// Governance commands requiring an authority key.
-#[derive(Debug, Clap)]
-pub enum GovCommand {
-    /// Initializes a registrar.
-    Init {
-        /// Not required if authority_file is present.
-        #[clap(short, long, required_unless_present("authority-file"))]
-        authority: Option<Pubkey>,
-        /// Not required if authority is present.
-        #[clap(short = 'f', long, required_unless_present("authority"))]
-        authority_file: Option<String>,
-        /// The amount of slots one must wait for a staking withdrawal.
-        #[clap(short, long, default_value = "10000")]
-        withdrawal_timelock: i64,
-        /// Slots in addition to the withdrawal_timelock for deactivation.
-        #[clap(short = 't', long, default_value = "10000")]
-        deactivation_timelock: i64,
-        /// SRM equivalent amount required for node activation.
-        #[clap(short, long, default_value = "10_000_000")]
-        reward_activation_threshold: u64,
-        #[clap(short, long)]
-        pool_program_id: Pubkey,
-        #[clap(short = 'd', long)]
-        pool_token_decimals: u8,
-    },
-}
-
 pub fn run(opts: Opts) -> Result<()> {
     let ctx = &opts.ctx;
     let registry_pid = opts.cmd.registry_pid;
 
     match opts.cmd.sub_cmd {
         SubCommand::Accounts(cmd) => account_cmd(ctx, registry_pid, cmd),
-        SubCommand::Gov(cmd) => gov_cmd(ctx, registry_pid, cmd),
+        SubCommand::Init {
+            withdrawal_timelock,
+            deactivation_timelock,
+            reward_activation_threshold,
+            pool_program_id,
+            pool_token_decimals,
+        } => init(
+            ctx,
+            registry_pid,
+            withdrawal_timelock,
+            deactivation_timelock,
+            reward_activation_threshold,
+            pool_program_id,
+            pool_token_decimals,
+        ),
         SubCommand::CreateEntity {
             crank,
             leader,
@@ -196,31 +197,6 @@ fn create_entity_cmd(
     Ok(())
 }
 
-pub fn gov_cmd(ctx: &Context, registry_pid: Option<Pubkey>, gov_cmd: GovCommand) -> Result<()> {
-    let registry_pid = registry_pid.ok_or(anyhow!("--pid not provided"))?;
-    match gov_cmd {
-        GovCommand::Init {
-            authority,
-            authority_file,
-            withdrawal_timelock,
-            deactivation_timelock,
-            reward_activation_threshold,
-            pool_program_id,
-            pool_token_decimals,
-        } => gov::init(
-            ctx,
-            registry_pid,
-            authority,
-            authority_file,
-            withdrawal_timelock,
-            deactivation_timelock,
-            reward_activation_threshold,
-            pool_program_id,
-            pool_token_decimals,
-        ),
-    }
-}
-
 fn account_cmd(ctx: &Context, registry_pid: Option<Pubkey>, cmd: AccountsCommand) -> Result<()> {
     let rpc_client = ctx.rpc_client();
 
@@ -267,52 +243,41 @@ fn account_cmd(ctx: &Context, registry_pid: Option<Pubkey>, cmd: AccountsCommand
     Ok(())
 }
 
-mod gov {
-    use super::*;
+pub fn init(
+    ctx: &Context,
+    registry_pid: Option<Pubkey>,
+    withdrawal_timelock: i64,
+    deactivation_timelock: i64,
+    reward_activation_threshold: u64,
+    pool_program_id: Pubkey,
+    pool_token_decimals: u8,
+) -> Result<()> {
+    let registry_pid = registry_pid.ok_or(anyhow!(
+        "Please provide --pid when initializing a registrar"
+    ))?;
+    let logger = serum_node_logging::get_logger("node/registry");
 
-    pub fn init(
-        ctx: &Context,
-        registry_pid: Pubkey,
-        authority: Option<Pubkey>,
-        authority_file: Option<String>,
-        withdrawal_timelock: i64,
-        deactivation_timelock: i64,
-        reward_activation_threshold: u64,
-        pool_program_id: Pubkey,
-        pool_token_decimals: u8,
-    ) -> Result<()> {
-        let logger = serum_node_logging::get_logger("node/registry");
+    let client = ctx.connect::<Client>(registry_pid)?;
 
-        let client = ctx.connect::<Client>(registry_pid)?;
+    let registrar_authority = ctx.wallet()?.pubkey();
+    let InitializeResponse {
+        registrar, pool, ..
+    } = client.initialize(InitializeRequest {
+        registrar_authority,
+        withdrawal_timelock,
+        deactivation_timelock,
+        mint: ctx.srm_mint,
+        mega_mint: ctx.msrm_mint,
+        reward_activation_threshold,
+        pool_program_id,
+        pool_token_decimals,
+    })?;
 
-        let registrar_authority = match authority {
-            Some(a) => a,
-            None => {
-                let file = authority_file.expect("Must be provided if authority is none");
-                let kp = solana_sdk::signature::read_keypair_file(&file)
-                    .map_err(|_| anyhow!("Unable to read provided authority file"))?;
-                kp.pubkey()
-            }
-        };
-        let InitializeResponse {
-            registrar, pool, ..
-        } = client.initialize(InitializeRequest {
-            registrar_authority,
-            withdrawal_timelock,
-            deactivation_timelock,
-            mint: ctx.srm_mint,
-            mega_mint: ctx.msrm_mint,
-            reward_activation_threshold,
-            pool_program_id,
-            pool_token_decimals,
-        })?;
+    info!(
+        logger,
+        "Registrar initialized with address: {:?}", registrar,
+    );
+    info!(logger, "Pool initialized with address: {:?}", pool,);
 
-        info!(
-            logger,
-            "Registrar initialized with address: {:?}", registrar,
-        );
-        info!(logger, "Pool initialized with address: {:?}", pool,);
-
-        Ok(())
-    }
+    Ok(())
 }
