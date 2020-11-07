@@ -14,7 +14,7 @@ lazy_static::lazy_static! {
                 .expect("Entity has a fixed size");
 }
 
-/// Entity is the account representing a single "node" that Member accoutns can
+/// Entity is the account representing a single "node" that Member accounts can
 /// stake with.
 #[derive(Clone, Default, Debug, BorshSerialize, BorshDeserialize, BorshSchema)]
 pub struct Entity {

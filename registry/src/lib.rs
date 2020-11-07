@@ -19,24 +19,21 @@ pub mod instruction {
         /// 0. `[writable]` Registrar.
         /// 1. `[]`         Vault.
         /// 2. `[]`         Mega vault.
-        /// 3. `[]`         Rent sysvar.
+        /// 3. `[]`         Pool.
+        /// 4. `[]`         Mega pool.
+        /// 5. `[]`         Pool program.
+        /// 6. `[]`         Rent sysvar.
         Initialize {
-            /// The priviledged account.
             authority: Pubkey,
-            /// Nonce for deriving the vault authority address.
             nonce: u8,
-            /// Number of seconds that must pass for a withdrawal to complete.
             withdrawal_timelock: i64,
-            /// Number of seconds after which an Entity becomes "deactivated".
             deactivation_timelock: i64,
-            /// The amount of tokens that must be staked for an entity to be
-            /// eligible for rewards.
             reward_activation_threshold: u64,
         },
         /// Accounts:
         ///
         /// 0. `[writable]` Registrar.
-        /// 1. `[]`         Authority.
+        /// 1. `[signer]`   Authority.
         UpdateRegistrar {
             new_authority: Option<Pubkey>,
             withdrawal_timelock: Option<i64>,
@@ -45,112 +42,122 @@ pub mod instruction {
         },
         /// Accounts:
         ///
-        /// 0. `[writable]` Entity account.
-        /// 1. `[signer]`   Leader of the node.
+        /// 0. `[writable]` Entity.
+        /// 1. `[signer]`   Entity leader.
         /// 2. `[]`         Registrar.
         /// 3. `[]`         Rent sysvar.
         CreateEntity,
         /// Accounts:
         ///
         /// 0. `[writable]` Entity account.
-        /// 1. `[signer]`   Leader of the entity.
+        /// 1. `[signer]`   Entity leader.
         /// 2. `[]`         Registrar.
         UpdateEntity { leader: Pubkey },
         /// Accounts:
         ///
-        /// 0. `[writable]` Member account being created.
-        /// 1. `[]`         Entity to join.
-        /// 2. `[]`         Registrar.
-        /// 3. `[]`         Rent sysvar.
+        /// 0. `[signer]`   Beneficiary.
+        /// 1. `[writable]` Member.
+        /// 2. `[]`         Entity to join.
+        /// 3. `[]`         Registrar.
+        /// 4. `[]`         Rent sysvar.
         CreateMember {
-            /// An account that can withdrawal or stake on the beneficiary's
-            /// behalf.
             delegate: Pubkey,
-            /// Watchtower authority assigned to the resulting member account.
             watchtower: accounts::Watchtower,
         },
         /// Accounts:
         ///
-        /// 0. `[writable]` Member account.
-        /// 1. `[signed]`   Beneficiary of the member account.
+        /// 0. `[writable]` Member.
+        /// 1. `[signer]`   Beneficiary.
         UpdateMember {
             watchtower: Option<accounts::Watchtower>,
-            /// Delegate can only be updated if the delegate's book balance is 0.
+            /// Delegate can only be updated if the delegate's balance is 0.
             delegate: Option<Pubkey>,
         },
         /// Accounts:
         ///
-        /// 0. `[writable]` Member account.
-        /// 1. `[signed]`   Beneficiary of the member account.
+        /// 0. `[writable]` Member.
+        /// 1. `[signed]`   Beneficiary.
         /// 2. `[]`         Registrar.
-        /// 3. `[writable]` Current entity of the member.
-        /// 4. `[writable]` New entity of the member.
+        /// 3. `[writable]` Current entity.
+        /// 4. `[writable]` New entity.
         /// 5. `[]`         Clock sysvar.
-        /// ..              Pool accounts. SRM pool must be before MSRM pool.
+        ///
+        /// ..              GetBasket Pool accounts.
         SwitchEntity,
         /// Accounts:
         ///
-        /// Lockup whitelist relay account interface:
+        /// Lockup whitelist relay interface (from lockup program):
         ///
-        /// 0. `[]`          Member account's delegate, e.g., the lockup's
-        ///                  program-derived-adddress. If not a delegated
-        ///                  instruction, then a dummy account.
-        /// 1. `[writable]`  The depositing token account (sender).
-        /// 2. `[writable]`  Vault (receiver).
-        /// 3. `[]/[signer]` Delegate/owner of the depositing token account.
-        ///                  If delegate, then the vault authority's
-        ///                  program-derived address.
-        /// 4. `[]`          SPL token program.
+        /// 0. `[writable]`  Depositor token account.
+        /// 1. `[]`          Depositor token authority.
+        /// 2. `[]`          Token program.
         ///
         /// Program specific.
         ///
-        /// 5. `[writable]` Member account responsibile for the stake.
-        /// 6. `[signer]`   Beneficiary of the Member account being staked.
-        /// 7. `[writable]` Entity account to stake to.
-        /// 8. `[]`         Registrar.
-        /// 9. `[]`         Clock.
+        /// 3. `[writable]` Member.
+        /// 4. `[signer]`   Beneficiary.
+        /// 5. `[writable]` Entity.
+        /// 6. `[]`         Registrar.
+        /// 7. `[]`         Clock.
+        /// 8. `[]`         Vault (either the MSRM or SRM vault depending on
+        ///                 depositor's mint).
+        ///
+        /// ..              GetBasket Pool accounts.
         Deposit { amount: u64 },
         /// Accounts:
         ///
-        /// Same as StakeIntent.
+        /// Lockup whitelist relay interface (to lockup program):
+        ///
+        /// 0. `[writable]`  Depositor token account.
+        /// 1. `[]`          Depositor token authority.
+        /// 2. `[]`          Token program.
+        /// 3. `[]`          Vault authority.
+        ///
+        /// Program specific.
+        ///
+        /// 4. `[writable]` Member.
+        /// 5. `[signer]`   Beneficiary.
+        /// 6. `[writable]` Entity.
+        /// 7. `[]`         Registrar.
+        /// 8. `[]`         Clock.
+        /// 9. `[]`         Vault (either the MSRM or SRM vault depending on
+        ///                 depositor's mint).
+        ///
+        /// ..              GetBasket Pool accounts.
         Withdraw { amount: u64 },
         /// Accounts:
         ///
-        /// Same as StakeIntent, substituting Accounts[1] for the pool's vault.
+        /// 0. `[writable]` Member.
+        /// 1. `[signer]`   Beneficiary.
+        /// 2. `[writable]` Entity.
+        /// 3. `[]`         Registrar.
+        /// 4. `[]`         Clock sysvar.
+        /// 5. `[]`         Token program.
         ///
+        /// ..              Execute pool accounts.
         Stake { amount: u64 },
         /// Accounts:
         ///
-        /// 0. `[writable]  PendingWithdrawal account to initialize.
-        /// 1  `[signed]`   Benficiary of the Stake account.
-        /// 2. `[writable]` The Member account to withdraw from.
-        /// 3. `[writable]` Entity the Stake is associated with.
+        /// 0. `[writable]  PendingWithdrawal.
+        /// 1. `[writable]` Member.
+        /// 2  `[signed]`   Benficiary.
+        /// 3. `[writable]` Entity.
         /// 4. `[writable]` Registrar.
-        /// 5. `[writable]` SRM escrow vault.
-        /// 6. `[writable]` MSRM escrow vault.
-        /// 7. `[]`         Registrar vault authority.
-        /// 8. `[]`         Token program.
-        /// 9. `[]`         Rent sysvar.
-        /// 10. `[]`        Clock sysvar.
+        /// 5. `[]`         Vault authority.
+        /// 6. `[]`         Token program.
+        /// 7. `[]`         Clock sysvar.
+        /// 8. `[]`         Rent sysvar.
         ///
-        /// ..              Pool accounts.
-        ///
-        /// Delegate only.
-        ///
-        /// 7. `[signed]?`  Delegate owner of the Member account.
+        /// ..              Execute pool accounts.
         StartStakeWithdrawal { amount: u64 },
-        /// Completes the pending withdrawal once the timelock period passes.
-        ///
         /// Accounts:
         ///
-        /// 0. `[writable]  PendingWithdrawal account to complete.
-        /// 1. `[signed]`   Beneficiary/delegate of the member account.
-        /// 2. `[writable]` Member account to withdraw from.
-        /// 3. `[writable]` Entity account the member is associated with.
-        /// 4. `[]`         SPL token program (SRM).
-        /// 5. `[]`         SPL mega token program (MSRM).
-        /// 6. `[writable]` SRM token account to send to upon redemption
-        /// 7. `[writable]` MSRM token account to send to upon redemption
+        /// 0. `[writable]  PendingWithdrawal.
+        /// 1. `[writable]` Member.
+        /// 2. `[signed]`   Beneficiary.
+        /// 3. `[writable]` Entity.
+        /// 4. `[]`         Registrar.
+        /// 5. `[]`         Clock.
         EndStakeWithdrawal,
     }
 }
