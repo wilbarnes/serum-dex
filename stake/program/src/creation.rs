@@ -64,11 +64,6 @@ pub fn handler(
         }
     };
 
-    // Sign all CPI invocations, in the event that any of the token
-    // transfers into the vault are (optionally) delegate transfers, where
-    // this program is the approved delegate.
-    let signer_seeds = vault::signer_seeds(ctx.pool_account.key, &state.vault_signer_nonce);
-
     // Transfer the SRM *into* the pool.
     {
         let escrow_acc_info = &registry_deposit_acc_infos[0];
@@ -84,7 +79,7 @@ pub fn handler(
             &[],
             asset_amount,
         )?;
-        solana_sdk::program::invoke_signed(
+        solana_sdk::program::invoke(
             &transfer_instr,
             &[
                 escrow_acc_info.clone(),
@@ -92,7 +87,6 @@ pub fn handler(
                 registry_signer_acc_info.clone(),
                 ctx.spl_token_program.expect("must be provided").clone(),
             ],
-            &[&signer_seeds],
         )?;
     }
 
@@ -111,7 +105,7 @@ pub fn handler(
             &[],
             asset_amount,
         )?;
-        solana_sdk::program::invoke_signed(
+        solana_sdk::program::invoke(
             &transfer_instr,
             &[
                 escrow_acc_info.clone(),
@@ -119,12 +113,12 @@ pub fn handler(
                 registry_signer_acc_info.clone(),
                 ctx.spl_token_program.expect("must be provided").clone(),
             ],
-            &[&signer_seeds],
         )?;
     }
 
     // Mint `spt_amount` of staking pool tokens to the Registry's beneficiary.
     {
+        let signer_seeds = vault::signer_seeds(ctx.pool_account.key, &state.vault_signer_nonce);
         let mint_tokens_instr = token_instruction::mint_to(
             &spl_token::ID,
             ctx.pool_token_mint.key,
