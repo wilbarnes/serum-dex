@@ -229,6 +229,7 @@ pub struct Basket {
     pub quantities: Vec<i64>,
 }
 
+// TODO: remove.
 serum_common::packable!(Basket);
 
 impl BorshSerialize for Address {

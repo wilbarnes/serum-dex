@@ -34,7 +34,7 @@ pub fn handler(
     let clock_acc_info = next_account_info(acc_infos)?;
     let vault_acc_info = next_account_info(acc_infos)?;
 
-    let pool = &Pool::parse_accounts(PoolConfig::GetBasket, acc_infos, beneficiary_acc_info)?;
+    let pool = &Pool::parse_accounts(PoolConfig::GetBasket, acc_infos)?;
 
     let ctx = EntityContext {
         entity_acc_info,
@@ -117,7 +117,6 @@ fn access_control(req: AccessControlRequest) -> Result<AccessControlResponse, Re
     }
 
     // Account validation.
-    pool_check(pool, &registrar)?;
     let member = access_control::member_join(
         member_acc_info,
         entity_acc_info,
@@ -132,6 +131,7 @@ fn access_control(req: AccessControlRequest) -> Result<AccessControlResponse, Re
         program_id,
     )?;
     let depositor = access_control::token(depositor_acc_info, depositor_authority_acc_info.key)?;
+    pool_check(program_id, pool, registrar_acc_info, &registrar, &member)?;
 
     // Withdraw specific.
     let is_mega = registrar.is_mega(*vault_acc_info.key)?;

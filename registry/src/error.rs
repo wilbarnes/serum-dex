@@ -52,6 +52,8 @@ pub enum RegistryErrorCode {
     InvalidVault = 38,
     InvalidPoolAccounts = 39,
     RetbufError = 40,
+    InvalidStakeTokenOwner = 41,
+    InvalidStakeTokenDelegate = 42,
     Unknown = 1000,
 }
 

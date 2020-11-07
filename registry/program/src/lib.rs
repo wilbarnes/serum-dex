@@ -15,6 +15,7 @@ mod end_stake_withdrawal;
 mod entity;
 mod initialize;
 mod pool;
+mod slash;
 mod stake;
 mod start_stake_withdrawal;
 mod switch_entity;
@@ -79,6 +80,7 @@ fn entry(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8])
         RegistryInstruction::EndStakeWithdrawal => {
             end_stake_withdrawal::handler(program_id, accounts)
         }
+        RegistryInstruction::Slash { amount } => slash::handler(program_id, accounts, amount),
     };
 
     result?;

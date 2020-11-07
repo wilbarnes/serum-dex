@@ -21,7 +21,7 @@ pub fn handler(program_id: &Pubkey, accounts: &[AccountInfo]) -> Result<(), Regi
     let new_entity_acc_info = next_account_info(acc_infos)?;
     let clock_acc_info = next_account_info(acc_infos)?;
 
-    let pool = &Pool::parse_accounts(PoolConfig::GetBasket, acc_infos, beneficiary_acc_info)?;
+    let pool = &Pool::parse_accounts(PoolConfig::GetBasket, acc_infos)?;
 
     let AccessControlResponse { registrar, clock } = access_control(AccessControlRequest {
         member_acc_info,
@@ -85,7 +85,7 @@ fn access_control(req: AccessControlRequest) -> Result<AccessControlResponse, Re
     // Account validation.
     let clock = access_control::clock(clock_acc_info)?;
     let registrar = access_control::registrar(registrar_acc_info, program_id)?;
-    let _member = access_control::member_join(
+    let member = access_control::member_join(
         member_acc_info,
         curr_entity_acc_info,
         beneficiary_acc_info,
@@ -94,7 +94,7 @@ fn access_control(req: AccessControlRequest) -> Result<AccessControlResponse, Re
     let _curr_entity =
         access_control::entity(curr_entity_acc_info, registrar_acc_info, program_id)?;
     let _new_entity = access_control::entity(new_entity_acc_info, registrar_acc_info, program_id)?;
-    pool_check(pool, &registrar)?;
+    pool_check(program_id, pool, registrar_acc_info, &registrar, &member)?;
 
     Ok(AccessControlResponse { registrar, clock })
 }

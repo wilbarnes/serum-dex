@@ -48,6 +48,11 @@ pub fn initialize(
     }
 }
 
+mod shared_mem {
+    // TODO: import the shared_mem crate instead of hardcoding here.
+    solana_sdk::declare_id!("shmem4EWT2sPdVGvTZCzXXRAURL9G5vpPxNwSeKhHUL");
+}
+
 pub fn get_basket(
     pool_program_id: &Pubkey,
     pool: &Pubkey,
@@ -55,7 +60,6 @@ pub fn get_basket(
     pool_asset_vaults: Vec<&Pubkey>,
     pool_vault_authority: &Pubkey,
     retbuf: &Pubkey,
-    retbuf_pid: &Pubkey,
     action: PoolAction,
 ) -> Instruction {
     let mut accounts = vec![
@@ -68,7 +72,7 @@ pub fn get_basket(
     accounts.extend_from_slice(&[
         AccountMeta::new_readonly(*pool_vault_authority, false),
         AccountMeta::new(*retbuf, false),
-        AccountMeta::new_readonly(*retbuf_pid, false),
+        AccountMeta::new_readonly(shared_mem::ID, false),
     ]);
     let req = PoolRequest {
         tag: Default::default(),
@@ -90,7 +94,6 @@ pub fn execute(
     user_pool_token: &Pubkey,
     user_pool_asset_tokens: Vec<&Pubkey>,
     user_authority: &Pubkey,
-    beneficiary: &Pubkey,
     action: PoolAction,
 ) -> Instruction {
     let mut accounts = vec![
@@ -116,8 +119,6 @@ pub fn execute(
     accounts.extend_from_slice(&[
         AccountMeta::new_readonly(*user_authority, true),
         AccountMeta::new_readonly(spl_token::ID, false),
-        // Program specific accounts (owner of the pool token being mutated).
-        AccountMeta::new_readonly(*beneficiary, true),
     ]);
     let req = PoolRequest {
         tag: Default::default(),

@@ -32,6 +32,9 @@ main() {
 		echo $pids
 		echo $registry_pid
 		echo $stake_pid
+		echo "god: SRM/MSRM"
+		echo $god
+		echo $god_msrm
 
 		cargo run -p serum-node -- \
 					-c l \
@@ -43,7 +46,7 @@ main() {
 					--pool-token-decimals 3 \
 					--deactivation-timelock 5 \
 					--reward-activation-threshold 1 \
-					--withdrawal-timelock 60
+					--withdrawal-timelock 2
 }
 
 main

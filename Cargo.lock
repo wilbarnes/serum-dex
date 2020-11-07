@@ -3257,6 +3257,7 @@ dependencies = [
  "serum-common",
  "serum-pool-schema",
  "solana-client-gen",
+ "solana-sdk",
  "spl-token",
  "thiserror",
 ]

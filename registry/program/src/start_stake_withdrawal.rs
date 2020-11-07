@@ -40,7 +40,7 @@ pub fn handler(
             token_program_acc_info: tok_program_acc_info,
             is_create: false,
         };
-        Pool::parse_accounts(cfg, acc_infos, beneficiary_acc_info)?
+        Pool::parse_accounts(cfg, acc_infos)?
     };
 
     let vault_acc_info = pool
@@ -136,14 +136,14 @@ fn access_control(req: AccessControlRequest) -> Result<(), RegistryError> {
     }
 
     // Account validation.
-    pool_check(pool, registrar)?;
     let rent = access_control::rent(rent_acc_info)?;
-    let _member = access_control::member_join(
+    let member = access_control::member_join(
         member_acc_info,
         entity_acc_info,
         beneficiary_acc_info,
         program_id,
     )?;
+    pool_check(program_id, pool, registrar_acc_info, registrar, &member)?;
     let _vault = access_control::vault_join(
         vault_acc_info,
         vault_authority_acc_info,

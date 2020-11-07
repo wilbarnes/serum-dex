@@ -2,10 +2,13 @@ use borsh::de::BorshDeserialize;
 use serum_common::pack::Pack;
 use serum_pool_schema::{Basket, PoolAction};
 use serum_registry::accounts::entity::PoolPrices;
-use serum_registry::accounts::{vault, Registrar};
+use serum_registry::accounts::{vault, Member, Registrar};
 use serum_registry::error::{RegistryError, RegistryErrorCode};
 use solana_sdk::account_info::{next_account_info, AccountInfo};
+use solana_sdk::program_option::COption;
+use solana_sdk::program_pack::Pack as TokenPack;
 use solana_sdk::pubkey::Pubkey;
+use spl_token::state::Account as TokenAccount;
 
 // PoolAccounts is a CPI client for the registry to invoke the staking pool.
 #[derive(Clone)]
@@ -34,13 +37,14 @@ impl<'a, 'b> Pool<'a, 'b> {
     pub fn is_mega(&self) -> bool {
         self.is_mega
     }
+
     pub fn prices(&self) -> &PoolPrices {
         &self.prices
     }
+
     pub fn parse_accounts(
         cfg: PoolConfig<'a, 'b>,
         acc_infos: &mut dyn std::iter::Iterator<Item = &'a AccountInfo<'b>>,
-        beneficiary_acc_info: &'a AccountInfo<'b>,
     ) -> Result<Self, RegistryError> {
         let acc_infos = acc_infos.collect::<Vec<_>>();
         let is_mega = match acc_infos.len() {
@@ -109,7 +113,6 @@ impl<'a, 'b> Pool<'a, 'b> {
                     pool_vault_authority_acc_info,
                     retbuf_acc_info,
                     retbuf_program_acc_info,
-                    beneficiary_acc_info,
                     pool_token_acc_info: None,
                     registry_vault_acc_infos: None,
                     registry_signer_acc_info: None,
@@ -124,7 +127,6 @@ impl<'a, 'b> Pool<'a, 'b> {
                     pool_vault_authority_acc_info: mega_pool_vault_authority_acc_info,
                     retbuf_acc_info,
                     retbuf_program_acc_info,
-                    beneficiary_acc_info,
                     pool_token_acc_info,
                     registry_vault_acc_infos,
                     registry_signer_acc_info,
@@ -141,7 +143,6 @@ impl<'a, 'b> Pool<'a, 'b> {
                     pool_vault_authority_acc_info,
                     retbuf_acc_info,
                     retbuf_program_acc_info,
-                    beneficiary_acc_info,
                     pool_token_acc_info,
                     registry_vault_acc_infos,
                     registry_signer_acc_info,
@@ -156,7 +157,6 @@ impl<'a, 'b> Pool<'a, 'b> {
                     pool_vault_authority_acc_info: mega_pool_vault_authority_acc_info,
                     retbuf_acc_info,
                     retbuf_program_acc_info,
-                    beneficiary_acc_info,
                     pool_token_acc_info: None,
                     registry_vault_acc_infos: None,
                     registry_signer_acc_info: None,
@@ -206,8 +206,6 @@ pub struct PoolAccounts<'a, 'b> {
     pub registry_vault_acc_infos: Option<Vec<&'a AccountInfo<'b>>>,
     pub registry_signer_acc_info: Option<&'a AccountInfo<'b>>,
     pub token_program_acc_info: Option<&'a AccountInfo<'b>>,
-    // Custom accounts.
-    pub beneficiary_acc_info: &'a AccountInfo<'b>,
     // Misc.
     pub signer_seeds: Option<(Pubkey, u8)>,
 }
@@ -217,10 +215,12 @@ impl<'a, 'b> PoolAccounts<'a, 'b> {
     pub fn create(&self, spt_amount: u64) -> Result<(), RegistryError> {
         self.execute(PoolAction::Create(spt_amount))
     }
+
     #[inline(always)]
     pub fn redeem(&self, spt_amount: u64) -> Result<(), RegistryError> {
         self.execute(PoolAction::Redeem(spt_amount))
     }
+
     pub fn execute(&self, action: PoolAction) -> Result<(), RegistryError> {
         let instr = serum_stake::instruction::execute(
             self.pool_program_id_acc_info.key,
@@ -239,48 +239,11 @@ impl<'a, 'b> PoolAccounts<'a, 'b> {
                 .map(|i| i.key)
                 .collect(),
             self.registry_signer_acc_info.unwrap().key,
-            self.beneficiary_acc_info.key,
             action,
         );
-
-        let acc_infos = {
-            let mut acc_infos = vec![
-                self.pool_acc_info.clone(),
-                self.pool_tok_mint_acc_info.clone(),
-            ];
-            acc_infos.extend_from_slice(
-                self.pool_asset_vault_acc_infos
-                    .clone()
-                    .into_iter()
-                    .map(|i| i.clone())
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-            );
-            acc_infos.extend_from_slice(&[
-                self.pool_vault_authority_acc_info.clone(),
-                self.pool_token_acc_info.unwrap().clone(),
-            ]);
-            acc_infos.extend_from_slice(
-                self.registry_vault_acc_infos
-                    .clone()
-                    .unwrap()
-                    .into_iter()
-                    .map(|i| i.clone())
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-            );
-            acc_infos.extend_from_slice(&[
-                self.registry_signer_acc_info.unwrap().clone(),
-                self.token_program_acc_info.unwrap().clone(),
-                self.beneficiary_acc_info.clone(),
-                self.pool_program_id_acc_info.clone(),
-            ]);
-
-            acc_infos
-        };
         let (pk, nonce) = self.signer_seeds.expect("transact must have signer seeds");
         let signer_seeds = vault::signer_seeds(&pk, &nonce);
-        solana_sdk::program::invoke_signed(&instr, &acc_infos, &[&signer_seeds])?;
+        solana_sdk::program::invoke_signed(&instr, &self.execute_acc_infos(), &[&signer_seeds])?;
         Ok(())
     }
 
@@ -295,7 +258,6 @@ impl<'a, 'b> PoolAccounts<'a, 'b> {
                 .collect(),
             self.pool_vault_authority_acc_info.key,
             self.retbuf_acc_info.key,
-            self.retbuf_program_acc_info.key,
             action,
         );
         let mut acc_infos = vec![
@@ -317,6 +279,44 @@ impl<'a, 'b> PoolAccounts<'a, 'b> {
     }
 }
 
+impl<'a, 'b> PoolAccounts<'a, 'b> {
+    #[inline(never)]
+    fn execute_acc_infos(&self) -> Vec<AccountInfo<'b>> {
+        let mut acc_infos = vec![
+            self.pool_acc_info.clone(),
+            self.pool_tok_mint_acc_info.clone(),
+        ];
+        acc_infos.extend_from_slice(
+            self.pool_asset_vault_acc_infos
+                .clone()
+                .into_iter()
+                .map(|i| i.clone())
+                .collect::<Vec<_>>()
+                .as_slice(),
+        );
+        acc_infos.extend_from_slice(&[
+            self.pool_vault_authority_acc_info.clone(),
+            self.pool_token_acc_info.unwrap().clone(),
+        ]);
+        acc_infos.extend_from_slice(
+            self.registry_vault_acc_infos
+                .clone()
+                .unwrap()
+                .into_iter()
+                .map(|i| i.clone())
+                .collect::<Vec<_>>()
+                .as_slice(),
+        );
+        acc_infos.extend_from_slice(&[
+            self.registry_signer_acc_info.unwrap().clone(),
+            self.token_program_acc_info.unwrap().clone(),
+            self.pool_program_id_acc_info.clone(),
+        ]);
+
+        acc_infos
+    }
+}
+
 pub enum PoolConfig<'a, 'b> {
     Execute {
         registrar_acc_info: &'a AccountInfo<'b>,
@@ -326,7 +326,66 @@ pub enum PoolConfig<'a, 'b> {
     GetBasket,
 }
 
-pub fn pool_check(pool: &Pool, registrar: &Registrar) -> Result<(), RegistryError> {
+mod shared_mem {
+    // TODO: import the shared_mem crate instead of hardcoding here.
+    solana_sdk::declare_id!("shmem4EWT2sPdVGvTZCzXXRAURL9G5vpPxNwSeKhHUL");
+}
+
+pub fn pool_check(
+    program_id: &Pubkey,
+    pool: &Pool,
+    registrar_acc_info: &AccountInfo,
+    registrar: &Registrar,
+    member: &Member,
+) -> Result<(), RegistryError> {
+    let _ = _pool_check(
+        program_id,
+        pool,
+        registrar_acc_info,
+        registrar,
+        member,
+        false,
+    )?;
+    Ok(())
+}
+
+pub fn pool_check_create(
+    program_id: &Pubkey,
+    pool: &Pool,
+    registrar_acc_info: &AccountInfo,
+    registrar: &Registrar,
+    member: &Member,
+) -> Result<TokenAccount, RegistryError> {
+    Ok(_pool_check(
+        program_id,
+        pool,
+        registrar_acc_info,
+        registrar,
+        member,
+        true,
+    )?
+    .expect("pool token must exist"))
+}
+
+fn _pool_check(
+    program_id: &Pubkey,
+    pool: &Pool,
+    registrar_acc_info: &AccountInfo,
+    registrar: &Registrar,
+    member: &Member,
+    is_create: bool,
+) -> Result<Option<TokenAccount>, RegistryError> {
+    // Check registry signer.
+    if let Some(registry_signer_acc_info) = pool.registry_signer_acc_info {
+        let r_signer = Pubkey::create_program_address(
+            &vault::signer_seeds(registrar_acc_info.key, &registrar.nonce),
+            program_id,
+        )
+        .map_err(|_| RegistryErrorCode::InvalidVaultAuthority)?;
+        if registry_signer_acc_info.key != &r_signer {
+            return Err(RegistryErrorCode::InvalidVaultAuthority)?;
+        }
+    }
     // Check pool program id.
     if registrar.pool_program_id != *pool.pool_program_id_acc_info.key {
         return Err(RegistryErrorCode::PoolProgramIdMismatch)?;
@@ -345,17 +404,44 @@ pub fn pool_check(pool: &Pool, registrar: &Registrar) -> Result<(), RegistryErro
     if !pool.is_mega && registrar.pool != *pool.pool_acc_info.key {
         return Err(RegistryErrorCode::PoolMismatch)?;
     }
-
-    // TODO: use the spl_shared_memory crate instead of hardcoding.
-    let spl_shared_memory_id: Pubkey = "shmem4EWT2sPdVGvTZCzXXRAURL9G5vpPxNwSeKhHUL"
-        .parse()
-        .unwrap();
     // Check retbuf.
-    if spl_shared_memory_id != *pool.retbuf_program_acc_info.key {
+    if shared_mem::ID != *pool.retbuf_program_acc_info.key {
         return Err(RegistryErrorCode::SharedMemoryMismatch)?;
+    }
+    // Check pool token.
+    if let Some(pool_token) = pool.pool_token_acc_info {
+        return pool_token_check(pool, pool_token, member, is_create);
     }
 
     // Assumes the rest of the checks are done by the pool program/framework.
 
-    Ok(())
+    Ok(None)
+}
+
+// Pool token must be owned by the registry with the member account's
+// beneficiary as delegate.
+fn pool_token_check(
+    pool: &Pool,
+    pool_token: &AccountInfo,
+    member: &Member,
+    is_create: bool,
+) -> Result<Option<TokenAccount>, RegistryError> {
+    let token = TokenAccount::unpack(&pool_token.try_borrow_data()?)?;
+    if token.owner != *pool.registry_signer_acc_info.unwrap().key {
+        return Err(RegistryErrorCode::InvalidStakeTokenOwner)?;
+    }
+    // Creations don't need a delegate, since we'll add it, if None
+    // is provided. If it is provided, it needs to be the beneficiary.
+    if is_create {
+        if let COption::Some(delegate) = token.delegate {
+            if delegate != member.beneficiary {
+                return Err(RegistryErrorCode::InvalidStakeTokenDelegate)?;
+            }
+        }
+    } else {
+        if token.delegate != COption::Some(member.beneficiary) {
+            return Err(RegistryErrorCode::InvalidStakeTokenDelegate)?;
+        }
+    }
+    return Ok(Some(token));
 }

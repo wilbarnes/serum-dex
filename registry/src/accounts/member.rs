@@ -69,6 +69,14 @@ impl Member {
     // then refers to MSRM.
     //
     // `owner` is the owner of the token account to withdraw to.
+    //
+    // TODO: if we allow slashing, then we need to make sure that only
+    //       the cost-basis of the main account's deposits can be withdrawn
+    //       (rather than the depostis + current price of the spt).
+    //       If that hits 0, then the user can only withdraw until the
+    //       delegate's cost basis hits 0. At which point, the user can
+    //       withdraw anywhere. (Note; the user can always withdraw to )
+    //       the delegate.
     pub fn can_withdraw(
         &self,
         prices: &PoolPrices,
@@ -209,6 +217,14 @@ impl Member {
     pub fn spt_did_redeem_end(&mut self, asset_amount: u64, mega_asset_amount: u64) {
         self.books.stake_intent += asset_amount;
         self.books.mega_stake_intent += mega_asset_amount;
+    }
+
+    pub fn slash(&mut self, spt_amount: u64, mega: bool) {
+        if mega {
+            self.books.spt_mega_amount -= spt_amount;
+        } else {
+            self.books.spt_amount -= spt_amount;
+        }
     }
 }
 

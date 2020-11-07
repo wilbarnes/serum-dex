@@ -26,13 +26,6 @@ pub fn governance(
     Ok(r)
 }
 
-pub fn clock(acc_info: &AccountInfo) -> Result<Clock, RegistryError> {
-    if *acc_info.key != solana_sdk::sysvar::clock::id() {
-        return Err(RegistryErrorCode::InvalidClockSysvar)?;
-    }
-    Clock::from_account_info(acc_info).map_err(Into::into)
-}
-
 pub fn registrar(acc_info: &AccountInfo, program_id: &Pubkey) -> Result<Registrar, RegistryError> {
     if acc_info.owner != program_id {
         return Err(RegistryErrorCode::InvalidAccountOwner)?;
@@ -73,20 +66,6 @@ pub fn entity_check(
     Ok(())
 }
 
-pub fn member_join(
-    acc_info: &AccountInfo,
-    entity: &AccountInfo,
-    beneficiary_acc_info: &AccountInfo,
-    program_id: &Pubkey,
-) -> Result<Member, RegistryError> {
-    let m = member(acc_info, beneficiary_acc_info, program_id)?;
-
-    if m.entity != *entity.key {
-        return Err(RegistryErrorCode::MemberEntityMismatch)?;
-    }
-    Ok(m)
-}
-
 pub fn delegate_check(
     member: &Member,
     delegate_owner_acc_info: Option<&AccountInfo>,
@@ -113,6 +92,40 @@ pub fn member(
     }
     if m.beneficiary != *beneficiary_acc_info.key {
         return Err(RegistryErrorCode::MemberBeneficiaryMismatch)?;
+    }
+    Ok(m)
+}
+
+pub fn member_join(
+    acc_info: &AccountInfo,
+    entity: &AccountInfo,
+    beneficiary_acc_info: &AccountInfo,
+    program_id: &Pubkey,
+) -> Result<Member, RegistryError> {
+    let m = member(acc_info, beneficiary_acc_info, program_id)?;
+
+    if m.entity != *entity.key {
+        return Err(RegistryErrorCode::MemberEntityMismatch)?;
+    }
+    Ok(m)
+}
+
+#[inline(always)]
+pub fn member_raw(
+    acc_info: &AccountInfo,
+    entity_acc_info: &AccountInfo,
+    program_id: &Pubkey,
+) -> Result<Member, RegistryError> {
+    if acc_info.owner != program_id {
+        return Err(RegistryErrorCode::InvalidOwner)?;
+    }
+
+    let m = Member::unpack(&acc_info.try_borrow_data()?)?;
+    if !m.initialized {
+        return Err(RegistryErrorCode::NotInitialized)?;
+    }
+    if m.entity != *entity_acc_info.key {
+        return Err(RegistryErrorCode::MemberEntityMismatch)?;
     }
     Ok(m)
 }
@@ -157,6 +170,45 @@ pub fn vault(
     Ok(vault)
 }
 
+pub fn vault_init(
+    vault_acc_info: &AccountInfo,
+    registrar_acc_info: &AccountInfo,
+    rent: &Rent,
+    nonce: u8,
+    program_id: &Pubkey,
+) -> Result<(), RegistryError> {
+    let vault_authority = Pubkey::create_program_address(
+        &vault::signer_seeds(registrar_acc_info.key, &nonce),
+        program_id,
+    )
+    .map_err(|_| RegistryErrorCode::InvalidVaultNonce)?;
+    let vault = token(vault_acc_info, &vault_authority)?;
+    if vault.owner != vault_authority {
+        return Err(RegistryErrorCode::InvalidVaultAuthority)?;
+    }
+    if !rent.is_exempt(vault_acc_info.lamports(), vault_acc_info.try_data_len()?) {
+        return Err(RegistryErrorCode::NotRentExempt)?;
+    }
+    Ok(())
+}
+
+pub fn pending_withdrawal(
+    acc_info: &AccountInfo,
+    program_id: &Pubkey,
+) -> Result<PendingWithdrawal, RegistryError> {
+    let pw = PendingWithdrawal::unpack(&acc_info.try_borrow_data()?)?;
+    if acc_info.owner != program_id {
+        return Err(RegistryErrorCode::InvalidAccountOwner)?;
+    }
+    if !pw.initialized {
+        return Err(RegistryErrorCode::NotInitialized)?;
+    }
+    if pw.burned {
+        return Err(RegistryErrorCode::AlreadyBurned)?;
+    }
+    Ok(pw)
+}
+
 pub fn token(acc_info: &AccountInfo, authority: &Pubkey) -> Result<TokenAccount, RegistryError> {
     if *acc_info.owner != spl_token::ID {
         return Err(RegistryErrorCode::InvalidAccountOwner)?;
@@ -179,42 +231,9 @@ pub fn rent(acc_info: &AccountInfo) -> Result<Rent, RegistryError> {
     Rent::from_account_info(acc_info).map_err(Into::into)
 }
 
-pub fn vault_init(
-    vault_acc_info: &AccountInfo,
-    registrar_acc_info: &AccountInfo,
-    rent: &Rent,
-    nonce: u8,
-    program_id: &Pubkey,
-) -> Result<(), RegistryError> {
-    let vault_authority = Pubkey::create_program_address(
-        &vault::signer_seeds(registrar_acc_info.key, &nonce),
-        program_id,
-    )
-    .map_err(|_| RegistryErrorCode::InvalidVaultNonce)?;
-    let vault = token(vault_acc_info, &vault_authority)?;
-    if vault.owner != vault_authority {
-        return Err(RegistryErrorCode::InvalidVaultAuthority)?;
+pub fn clock(acc_info: &AccountInfo) -> Result<Clock, RegistryError> {
+    if *acc_info.key != solana_sdk::sysvar::clock::id() {
+        return Err(RegistryErrorCode::InvalidClockSysvar)?;
     }
-    // Rent.
-    if !rent.is_exempt(vault_acc_info.lamports(), vault_acc_info.try_data_len()?) {
-        return Err(RegistryErrorCode::NotRentExempt)?;
-    }
-    Ok(())
-}
-
-pub fn pending_withdrawal(
-    acc_info: &AccountInfo,
-    program_id: &Pubkey,
-) -> Result<PendingWithdrawal, RegistryError> {
-    let pw = PendingWithdrawal::unpack(&acc_info.try_borrow_data()?)?;
-    if acc_info.owner != program_id {
-        return Err(RegistryErrorCode::InvalidAccountOwner)?;
-    }
-    if !pw.initialized {
-        return Err(RegistryErrorCode::NotInitialized)?;
-    }
-    if pw.burned {
-        return Err(RegistryErrorCode::AlreadyBurned)?;
-    }
-    Ok(pw)
+    Clock::from_account_info(acc_info).map_err(Into::into)
 }

@@ -153,6 +153,14 @@ impl Entity {
         self.activation_amount(ctx) >= registrar.reward_activation_threshold
             && (self.balances.spt_mega_amount >= 1 || self.balances.mega_stake_intent >= 1)
     }
+
+    pub fn slash(&mut self, spt_amount: u64, mega: bool) {
+        if mega {
+            self.balances.spt_mega_amount -= spt_amount;
+        } else {
+            self.balances.spt_amount -= spt_amount;
+        }
+    }
 }
 
 // Private methods.

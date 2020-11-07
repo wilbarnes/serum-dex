@@ -15,24 +15,20 @@ pub fn handler(
     info!("handler: redemption");
 
     let &UserAccounts {
-        pool_token_account, // Owned by Registry's member beneficiary. Registry as delegate.
+        pool_token_account,                        // Owned by Registry.
         asset_accounts: registry_escrow_acc_infos, // Registry escrow vaults.
-        authority: registry_signer_acc_info, // Registry's program-derived address.
+        authority: registry_signer_acc_info,       // Registry's program-derived address.
     } = ctx
         .user_accounts
         .as_ref()
         .expect("transact requests have user accounts");
 
-    assert!(ctx.custom_accounts.len() == 1);
+    assert!(ctx.custom_accounts.len() == 0);
     assert!(registry_escrow_acc_infos.len() == 1 || registry_escrow_acc_infos.len() == 2);
     assert!(ctx.pool_vault_accounts.len() == registry_escrow_acc_infos.len());
 
     // Auth.
     if !registry_signer_acc_info.is_signer {
-        return Err(StakeErrorCode::Unauthorized)?;
-    }
-    let beneficiary_acc_info = &ctx.custom_accounts[0];
-    if !beneficiary_acc_info.is_signer {
         return Err(StakeErrorCode::Unauthorized)?;
     }
     let expected_admin: Pubkey = state.admin_key.clone().expect("must have admin key").into();
@@ -105,7 +101,7 @@ pub fn handler(
             &spl_token::ID,
             pool_token_account.key,
             ctx.pool_token_mint.key,
-            beneficiary_acc_info.key,
+            registry_signer_acc_info.key,
             &[],
             spt_amount,
         )?;
@@ -114,7 +110,7 @@ pub fn handler(
             &[
                 pool_token_account.clone(),
                 ctx.pool_token_mint.clone(),
-                beneficiary_acc_info.clone(),
+                registry_signer_acc_info.clone(),
                 ctx.spl_token_program.expect("must be provided").clone(),
             ],
             &[&signer_seeds],

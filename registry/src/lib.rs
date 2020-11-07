@@ -159,6 +159,17 @@ pub mod instruction {
         /// 4. `[]`         Registrar.
         /// 5. `[]`         Clock.
         EndStakeWithdrawal,
+        /// Accounts:
+        ///
+        /// 0. `[signer]`   Registrar authority.
+        /// 1. `[]`         Registrar.
+        /// 2. `[writable]` Member being slashed.
+        /// 3. `[writable]` Entity.
+        /// 4. `[]`         Clock sysvar.
+        /// 5. `[]`         Token program.
+        ///
+        /// ..              Execute pool accounts.
+        Slash { amount: u64 },
     }
 }
 

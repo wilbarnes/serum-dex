@@ -10,6 +10,7 @@ use serum_lockup_client::{
 use serum_registry::accounts::pending_withdrawal::PendingPayment;
 use serum_registry_client::*;
 use solana_client_gen::prelude::*;
+use solana_client_gen::solana_sdk::program_option::COption;
 use solana_client_gen::solana_sdk::pubkey::Pubkey;
 use solana_client_gen::solana_sdk::signature::{Keypair, Signer};
 use spl_token::state::Account as TokenAccount;
@@ -316,7 +317,14 @@ fn lifecycle() {
         let user_pool_token_acc: TokenAccount =
             rpc::get_token_account(client.rpc(), &user_pool_token).unwrap();
         assert_eq!(user_pool_token_acc.amount, 1);
-        assert_eq!(user_pool_token_acc.owner, beneficiary.pubkey());
+        assert_eq!(
+            user_pool_token_acc.owner,
+            client.vault_authority(&registrar).unwrap()
+        );
+        assert_eq!(
+            user_pool_token_acc.delegate,
+            COption::Some(beneficiary.pubkey()),
+        );
         let (srm_vault, msrm_vault) = client.stake_mega_pool_asset_vaults(&registrar).unwrap();
         assert_eq!(srm_vault.amount, 0);
         assert_eq!(msrm_vault.amount, 1);
@@ -358,7 +366,14 @@ fn lifecycle() {
         let user_pool_token_acc: TokenAccount =
             rpc::get_token_account(client.rpc(), &user_pool_token).unwrap();
         assert_eq!(user_pool_token_acc.amount, stake_intent_amount);
-        assert_eq!(user_pool_token_acc.owner, beneficiary.pubkey());
+        assert_eq!(
+            user_pool_token_acc.owner,
+            client.vault_authority(&registrar).unwrap()
+        );
+        assert_eq!(
+            user_pool_token_acc.delegate,
+            COption::Some(beneficiary.pubkey()),
+        );
 
         let pool_vault = client.stake_pool_asset_vault(&registrar).unwrap();
         assert_eq!(pool_vault.amount, stake_intent_amount);

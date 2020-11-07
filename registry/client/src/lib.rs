@@ -226,7 +226,6 @@ impl Client {
             mega,
             depositor_assets,
             user_pool_token,
-            beneficiary,
             vault_authority,
         )?;
 
@@ -297,7 +296,6 @@ impl Client {
             mega,
             assets,
             Some(user_pool_token),
-            beneficiary, // Not used since pool token is given.
             vault_authority,
         )?;
 
@@ -479,7 +477,6 @@ impl Client {
         mega: bool,
         basket_assets: Vec<Pubkey>,
         pool_token: Option<Pubkey>,
-        pool_token_owner: &Keypair,
         registry_vault_authority: Pubkey,
     ) -> Result<(Vec<AccountMeta>, Pubkey), ClientError> {
         let (mut accounts, main_pool_mint) =
@@ -488,11 +485,10 @@ impl Client {
             if let Some(spt) = pool_token {
                 spt
             } else {
-                rpc::create_token_account_with_delegate(
+                rpc::create_token_account(
                     self.rpc(),
                     &main_pool_mint.into(),
-                    &pool_token_owner.pubkey(),
-                    Some((&registry_vault_authority, 0, pool_token_owner)),
+                    &registry_vault_authority,
                     self.payer(),
                 )?
                 .pubkey()
