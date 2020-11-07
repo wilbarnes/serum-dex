@@ -14,13 +14,11 @@ pub mod instruction {
     use super::*;
     #[derive(Debug, BorshSerialize, BorshDeserialize, BorshSchema)]
     pub enum RegistryInstruction {
-        /// Initializes the registry instance for use.
-        ///
         /// Accounts:
         ///
-        /// 0. `[writable]` Registrar to initialize.
-        /// 1. `[]`         SRM "stake-intent" vault.
-        /// 2. `[]`         MSRM "stake-intent" vault.
+        /// 0. `[writable]` Registrar.
+        /// 1. `[]`         Vault.
+        /// 2. `[]`         Mega vault.
         /// 3. `[]`         Rent sysvar.
         Initialize {
             /// The priviledged account.
@@ -35,9 +33,16 @@ pub mod instruction {
             /// eligible for rewards.
             reward_activation_threshold: u64,
         },
-        /// CreateEntity initializes the new "node" with the Registry,
-        /// designated "inactive".
+        /// Accounts:
         ///
+        /// 0. `[writable]` Registrar.
+        /// 1. `[]`         Authority.
+        UpdateRegistrar {
+            new_authority: Option<Pubkey>,
+            withdrawal_timelock: Option<i64>,
+            deactivation_timelock: Option<i64>,
+            reward_activation_threshold: Option<u64>,
+        },
         /// Accounts:
         ///
         /// 0. `[writable]` Entity account.
@@ -45,16 +50,12 @@ pub mod instruction {
         /// 2. `[]`         Registrar.
         /// 3. `[]`         Rent sysvar.
         CreateEntity,
-        /// UpdateEntity updates the leader of the node entity.
-        ///
         /// Accounts:
         ///
         /// 0. `[writable]` Entity account.
         /// 1. `[signer]`   Leader of the entity.
         /// 2. `[]`         Registrar.
         UpdateEntity { leader: Pubkey },
-        /// Joins the entity by creating a membership account.
-        ///
         /// Accounts:
         ///
         /// 0. `[writable]` Member account being created.
@@ -118,9 +119,6 @@ pub mod instruction {
         /// Same as StakeIntent, substituting Accounts[1] for the pool's vault.
         ///
         Stake { amount: u64 },
-        /// Initiates a stake withdrawal. Funds are locked up until the
-        /// withdrawl timelock passes.
-        ///
         /// Accounts:
         ///
         /// 0. `[writable]  PendingWithdrawal account to initialize.

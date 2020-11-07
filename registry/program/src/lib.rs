@@ -20,6 +20,7 @@ mod start_stake_withdrawal;
 mod switch_entity;
 mod update_entity;
 mod update_member;
+mod update_registrar;
 mod withdraw;
 
 solana_program::entrypoint!(entry);
@@ -39,6 +40,19 @@ fn entry(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8])
             accounts,
             authority,
             nonce,
+            withdrawal_timelock,
+            deactivation_timelock,
+            reward_activation_threshold,
+        ),
+        RegistryInstruction::UpdateRegistrar {
+            new_authority,
+            withdrawal_timelock,
+            deactivation_timelock,
+            reward_activation_threshold,
+        } => update_registrar::handler(
+            program_id,
+            accounts,
+            new_authority,
             withdrawal_timelock,
             deactivation_timelock,
             reward_activation_threshold,

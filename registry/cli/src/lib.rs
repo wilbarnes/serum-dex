@@ -261,7 +261,10 @@ pub fn init(
 
     let registrar_authority = ctx.wallet()?.pubkey();
     let InitializeResponse {
-        registrar, pool, ..
+        registrar,
+        pool,
+        mega_pool,
+        ..
     } = client.initialize(InitializeRequest {
         registrar_authority,
         withdrawal_timelock,
@@ -277,7 +280,11 @@ pub fn init(
         logger,
         "Registrar initialized with address: {:?}", registrar,
     );
-    info!(logger, "Pool initialized with address: {:?}", pool,);
+    info!(logger, "Pool initialized with address: {:?}", pool);
+    info!(
+        logger,
+        "Mega pool initialized with address: {:?}", mega_pool
+    );
 
     Ok(())
 }
