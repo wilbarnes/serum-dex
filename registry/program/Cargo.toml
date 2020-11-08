@@ -28,7 +28,7 @@ borsh = { git = "https://github.com/project-serum/borsh", branch = "serum" }
 
 [profile.release]
 lto = true
-codegen-units = 4
+codegen-units = 3
 panic = 'abort'
 
 [profile.test]
