@@ -14,6 +14,7 @@ mod deposit;
 mod end_stake_withdrawal;
 mod entity;
 mod initialize;
+mod mark_generation;
 mod pool;
 mod slash;
 mod stake;
@@ -62,18 +63,17 @@ fn entry(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8])
         RegistryInstruction::UpdateEntity { leader } => {
             update_entity::handler(program_id, accounts, leader)
         }
-        RegistryInstruction::CreateMember {
-            delegate,
-            watchtower,
-        } => create_member::handler(program_id, accounts, delegate, watchtower),
-        RegistryInstruction::UpdateMember {
-            watchtower,
-            delegate,
-        } => update_member::handler(program_id, accounts, watchtower, delegate),
+        RegistryInstruction::CreateMember { delegate } => {
+            create_member::handler(program_id, accounts, delegate)
+        }
+        RegistryInstruction::UpdateMember { delegate } => {
+            update_member::handler(program_id, accounts, delegate)
+        }
         RegistryInstruction::SwitchEntity => switch_entity::handler(program_id, accounts),
         RegistryInstruction::Deposit { amount } => deposit::handler(program_id, accounts, amount),
         RegistryInstruction::Withdraw { amount } => withdraw::handler(program_id, accounts, amount),
         RegistryInstruction::Stake { amount } => stake::handler(program_id, accounts, amount),
+        RegistryInstruction::MarkGeneration => mark_generation::handler(program_id, accounts),
         RegistryInstruction::StartStakeWithdrawal { amount } => {
             start_stake_withdrawal::handler(program_id, accounts, amount)
         }

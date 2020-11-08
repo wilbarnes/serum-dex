@@ -331,6 +331,7 @@ mod shared_mem {
     solana_sdk::declare_id!("shmem4EWT2sPdVGvTZCzXXRAURL9G5vpPxNwSeKhHUL");
 }
 
+// TODO: rename: pool_check_redeem.
 pub fn pool_check(
     program_id: &Pubkey,
     pool: &Pool,
@@ -343,9 +344,19 @@ pub fn pool_check(
         pool,
         registrar_acc_info,
         registrar,
-        member,
+        Some(member),
         false,
     )?;
+    Ok(())
+}
+
+pub fn pool_check_get_basket(
+    program_id: &Pubkey,
+    pool: &Pool,
+    registrar_acc_info: &AccountInfo,
+    registrar: &Registrar,
+) -> Result<(), RegistryError> {
+    let _ = _pool_check(program_id, pool, registrar_acc_info, registrar, None, false)?;
     Ok(())
 }
 
@@ -361,7 +372,7 @@ pub fn pool_check_create(
         pool,
         registrar_acc_info,
         registrar,
-        member,
+        Some(member),
         true,
     )?
     .expect("pool token must exist"))
@@ -372,7 +383,7 @@ fn _pool_check(
     pool: &Pool,
     registrar_acc_info: &AccountInfo,
     registrar: &Registrar,
-    member: &Member,
+    member: Option<&Member>,
     is_create: bool,
 ) -> Result<Option<TokenAccount>, RegistryError> {
     // Check registry signer.
@@ -410,6 +421,7 @@ fn _pool_check(
     }
     // Check pool token.
     if let Some(pool_token) = pool.pool_token_acc_info {
+        let member = member.expect("member must be provided");
         return pool_token_check(pool, pool_token, member, is_create);
     }
 
@@ -430,7 +442,7 @@ fn pool_token_check(
     if token.owner != *pool.registry_signer_acc_info.unwrap().key {
         return Err(RegistryErrorCode::InvalidStakeTokenOwner)?;
     }
-    // Creations don't need a delegate, since we'll add it, if None
+    // Creations don't need a delegate since we'll add it, if None
     // is provided. If it is provided, it needs to be the beneficiary.
     if is_create {
         if let COption::Some(delegate) = token.delegate {

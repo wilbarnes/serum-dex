@@ -1,7 +1,6 @@
 use serum_common::client::rpc;
 use serum_pool_schema::{MEGA_POOL_STATE_SIZE, POOL_STATE_SIZE};
 use serum_registry::accounts;
-use serum_registry::accounts::Watchtower;
 use serum_registry::client::{Client as InnerClient, ClientError as InnerClientError};
 use solana_client_gen::prelude::*;
 use solana_client_gen::solana_sdk;
@@ -306,8 +305,6 @@ pub fn create_member_derived(
     entity: Pubkey,
     beneficiary: &Keypair,
     delegate: Pubkey,
-    watchtower: Pubkey,
-    watchtower_dest: Pubkey,
 ) -> Result<(Signature, Pubkey), InnerClientError> {
     let member_address = member_address_derived(client)?;
 
@@ -333,12 +330,8 @@ pub fn create_member_derived(
         AccountMeta::new_readonly(solana_sdk::sysvar::rent::ID, false),
     ];
 
-    let member_instr = serum_registry::instruction::create_member(
-        *client.program(),
-        &accounts,
-        delegate,
-        Watchtower::new(watchtower, watchtower_dest),
-    );
+    let member_instr =
+        serum_registry::instruction::create_member(*client.program(), &accounts, delegate);
 
     let instructions = [create_acc_instr, member_instr];
     let signers = [client.payer(), beneficiary];

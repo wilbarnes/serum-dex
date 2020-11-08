@@ -24,24 +24,8 @@ pub struct Member {
     pub beneficiary: Pubkey,
     /// The entity's activation counter to which the stake belongs.
     pub generation: u64,
-    /// The Watchtower that can withdraw the `Member` account's `main` `Book`.
-    pub watchtower: Watchtower,
     /// The balance subbaccounts that partition the Member's stake balance.
     pub books: MemberBooks,
-    /// The *last* stake context used when creating a staking pool token.
-    /// This is used to mark the price of a staking pool token to its underlying
-    /// basket, when a withdrawal on an inactive entity happens.
-    ///
-    /// Marking the price this ways relies on the fact that the price of
-    /// a staking pool token can only go up (since the underlying basket can't
-    /// be removed or destroyed without redeeming a staking pool token).
-    ///
-    /// Additionally, it implies that withdrawing from the staking pool on
-    /// an inactive entity *might* yield less of the underlying asset than
-    /// if a withdrawal happens on an active entity (since rewards might have
-    /// been dropped on the staking pool after this member deposited, and
-    /// before the entity became inactive, pushing the price up.)
-    pub last_active_prices: PoolPrices,
 }
 
 impl Member {
@@ -200,9 +184,6 @@ impl Member {
             let basket = prices.basket_quantities(amount, mega)?;
             self.books.stake_intent -= basket[0];
         }
-
-        self.last_active_prices = prices.clone();
-
         Ok(())
     }
 
@@ -225,34 +206,6 @@ impl Member {
         } else {
             self.books.spt_amount -= spt_amount;
         }
-    }
-}
-
-/// Watchtower defines an (optional) authority that can update a Member account
-/// on behalf of the `beneficiary`.
-#[derive(Default, Clone, Copy, Debug, BorshSerialize, BorshDeserialize, BorshSchema)]
-pub struct Watchtower {
-    /// The signing key that can withdraw stake from this Member account in
-    /// the case of a pending deactivation.
-    authority: Pubkey,
-    /// The destination *token* address the staked funds are sent to in the
-    /// case of a withdrawal by a watchtower.
-    ///
-    /// Note that a watchtower can only withdraw deposits *not* sent from a
-    /// delegate. Withdrawing more will result in tx failure.
-    ///
-    /// For all delegated funds, the watchtower should follow the protocol
-    /// defined by the delegate.
-    ///
-    /// In the case of locked SRM, this means invoking the `WhitelistDeposit`
-    /// instruction on the Serum Lockup program to transfer funds from the
-    /// Registry back into the Lockup.
-    dst: Pubkey,
-}
-
-impl Watchtower {
-    pub fn new(authority: Pubkey, dst: Pubkey) -> Self {
-        Self { authority, dst }
     }
 }
 

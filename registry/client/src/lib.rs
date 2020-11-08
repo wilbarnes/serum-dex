@@ -113,18 +113,9 @@ impl Client {
             beneficiary,
             delegate,
             registrar,
-            watchtower,
-            watchtower_dest,
         } = req;
-        let (tx, member) = inner::create_member_derived(
-            &self.inner,
-            registrar,
-            entity,
-            beneficiary,
-            delegate,
-            watchtower,
-            watchtower_dest,
-        )?;
+        let (tx, member) =
+            inner::create_member_derived(&self.inner, registrar, entity, beneficiary, delegate)?;
         Ok(CreateMemberResponse { tx, member })
     }
 
@@ -252,6 +243,7 @@ impl Client {
         })
     }
 
+    // TODO: add a generation parameter for inactive entities.
     pub fn start_stake_withdrawal(
         &self,
         req: StartStakeWithdrawalRequest,
@@ -669,8 +661,6 @@ pub struct CreateMemberRequest<'a> {
     pub delegate: Pubkey,
     pub registrar: Pubkey,
     pub beneficiary: &'a Keypair,
-    pub watchtower: Pubkey,
-    pub watchtower_dest: Pubkey,
 }
 
 pub struct CreateMemberResponse {

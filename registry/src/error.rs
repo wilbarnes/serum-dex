@@ -54,6 +54,8 @@ pub enum RegistryErrorCode {
     RetbufError = 40,
     InvalidStakeTokenOwner = 41,
     InvalidStakeTokenDelegate = 42,
+    GenerationEntityMismatch = 43,
+    InvalidGenerationNumber = 44,
     Unknown = 1000,
 }
 

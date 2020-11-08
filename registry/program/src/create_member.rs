@@ -1,6 +1,6 @@
 use serum_common::pack::Pack;
 use serum_registry::access_control;
-use serum_registry::accounts::{Member, MemberBooks, Watchtower};
+use serum_registry::accounts::{Member, MemberBooks};
 use serum_registry::error::{RegistryError, RegistryErrorCode};
 use solana_program::info;
 use solana_sdk::account_info::{next_account_info, AccountInfo};
@@ -10,7 +10,6 @@ pub fn handler(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     delegate: Pubkey,
-    watchtower: Watchtower,
 ) -> Result<(), RegistryError> {
     info!("handler: create_member");
 
@@ -40,7 +39,6 @@ pub fn handler(
                 delegate,
                 entity_acc_info,
                 registrar_acc_info,
-                watchtower,
             })
             .map_err(Into::into)
         },
@@ -101,7 +99,6 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), RegistryError> {
         delegate,
         entity_acc_info,
         registrar_acc_info,
-        watchtower,
     } = req;
 
     member.initialized = true;
@@ -109,9 +106,7 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), RegistryError> {
     member.entity = *entity_acc_info.key;
     member.beneficiary = *beneficiary_acc_info.key;
     member.generation = 0;
-    member.watchtower = watchtower;
     member.books = MemberBooks::new(*beneficiary_acc_info.key, delegate);
-    member.last_active_prices = Default::default();
 
     Ok(())
 }
@@ -131,5 +126,4 @@ struct StateTransitionRequest<'a, 'b, 'c> {
     entity_acc_info: &'a AccountInfo<'b>,
     member: &'c mut Member,
     delegate: Pubkey,
-    watchtower: Watchtower,
 }

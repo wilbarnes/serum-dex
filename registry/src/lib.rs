@@ -60,16 +60,12 @@ pub mod instruction {
         /// 2. `[]`         Entity to join.
         /// 3. `[]`         Registrar.
         /// 4. `[]`         Rent sysvar.
-        CreateMember {
-            delegate: Pubkey,
-            watchtower: accounts::Watchtower,
-        },
+        CreateMember { delegate: Pubkey },
         /// Accounts:
         ///
         /// 0. `[writable]` Member.
         /// 1. `[signer]`   Beneficiary.
         UpdateMember {
-            watchtower: Option<accounts::Watchtower>,
             /// Delegate can only be updated if the delegate's balance is 0.
             delegate: Option<Pubkey>,
         },
@@ -82,7 +78,7 @@ pub mod instruction {
         /// 4. `[writable]` New entity.
         /// 5. `[]`         Clock sysvar.
         ///
-        /// ..              GetBasket Pool accounts.
+        /// ..              GetBasket pool accounts.
         SwitchEntity,
         /// Accounts:
         ///
@@ -102,7 +98,7 @@ pub mod instruction {
         /// 8. `[]`         Vault (either the MSRM or SRM vault depending on
         ///                 depositor's mint).
         ///
-        /// ..              GetBasket Pool accounts.
+        /// ..              GetBasket pool accounts.
         Deposit { amount: u64 },
         /// Accounts:
         ///
@@ -123,7 +119,7 @@ pub mod instruction {
         /// 9. `[]`         Vault (either the MSRM or SRM vault depending on
         ///                 depositor's mint).
         ///
-        /// ..              GetBasket Pool accounts.
+        /// ..              GetBasket pool accounts.
         Withdraw { amount: u64 },
         /// Accounts:
         ///
@@ -138,17 +134,28 @@ pub mod instruction {
         Stake { amount: u64 },
         /// Accounts:
         ///
+        /// 0. `[writable]` Generation.
+        /// 1. `[]`         Entity.
+        /// 2. `[]`         Registrar.
+        ///
+        /// ..              GetBasket pool accounts.
+        MarkGeneration,
+        /// Accounts:
+        ///
         /// 0. `[writable]  PendingWithdrawal.
         /// 1. `[writable]` Member.
         /// 2  `[signed]`   Benficiary.
         /// 3. `[writable]` Entity.
         /// 4. `[writable]` Registrar.
         /// 5. `[]`         Vault authority.
-        /// 6. `[]`         Token program.
-        /// 7. `[]`         Clock sysvar.
-        /// 8. `[]`         Rent sysvar.
+        /// 7. `[]`         Token program.
+        /// 8. `[]`         Clock sysvar.
+        /// 9. `[]`         Rent sysvar.
         ///
         /// ..              Execute pool accounts.
+        ///
+        /// -1. `[]`        Generation (optional). Must be provided when
+        ///                 withdrawing from an *inactive* entity.
         StartStakeWithdrawal { amount: u64 },
         /// Accounts:
         ///

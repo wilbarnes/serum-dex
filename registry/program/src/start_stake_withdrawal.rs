@@ -6,7 +6,7 @@ use serum_registry::access_control;
 use serum_registry::accounts::entity::EntityState;
 use serum_registry::accounts::pending_withdrawal::PendingPayment;
 use serum_registry::accounts::vault;
-use serum_registry::accounts::{Entity, Member, PendingWithdrawal, Registrar};
+use serum_registry::accounts::{Entity, Generation, Member, PendingWithdrawal, Registrar};
 use serum_registry::error::{RegistryError, RegistryErrorCode};
 use solana_program::info;
 use solana_sdk::account_info::{next_account_info, AccountInfo};
@@ -43,6 +43,9 @@ pub fn handler(
         Pool::parse_accounts(cfg, acc_infos)?
     };
 
+    // Prior initialization of the Generation account is optional.
+    let generation_acc_info = acc_infos.next();
+
     let vault_acc_info = pool
         .registry_vault_acc_infos
         .as_ref()
@@ -66,7 +69,7 @@ pub fn handler(
     with_entity(ctx, &mut |entity: &mut Entity,
                            registrar: &Registrar,
                            clock: &Clock| {
-        access_control(AccessControlRequest {
+        let AccessControlResponse { ref generation } = access_control(AccessControlRequest {
             pending_withdrawal_acc_info,
             beneficiary_acc_info,
             registrar_acc_info,
@@ -77,6 +80,7 @@ pub fn handler(
             vault_acc_info,
             mega_vault_acc_info,
             vault_authority_acc_info,
+            generation_acc_info,
             registrar,
             pool,
         })?;
@@ -100,6 +104,7 @@ pub fn handler(
                             vault_authority_acc_info,
                             tok_program_acc_info,
                             registrar_acc_info,
+                            generation,
                         })
                         .map_err(Into::into)
                     },
@@ -112,7 +117,7 @@ pub fn handler(
     Ok(())
 }
 
-fn access_control(req: AccessControlRequest) -> Result<(), RegistryError> {
+fn access_control(req: AccessControlRequest) -> Result<AccessControlResponse, RegistryError> {
     info!("access-control: start_stake_withdrawal");
 
     let AccessControlRequest {
@@ -128,6 +133,7 @@ fn access_control(req: AccessControlRequest) -> Result<(), RegistryError> {
         vault_authority_acc_info,
         registrar,
         pool,
+        generation_acc_info,
     } = req;
 
     // Beneficiary authorization.
@@ -143,6 +149,13 @@ fn access_control(req: AccessControlRequest) -> Result<(), RegistryError> {
         beneficiary_acc_info,
         program_id,
     )?;
+    let generation = generation_acc_info
+        .map(|generation_acc_info| {
+            access_control::generation(generation_acc_info, entity_acc_info, &member, program_id)
+        })
+        // Swap the option and result positions.
+        .map_or(Ok(None), |res| res.map(Some))?;
+
     pool_check(program_id, pool, registrar_acc_info, registrar, &member)?;
     let _vault = access_control::vault_join(
         vault_acc_info,
@@ -180,7 +193,7 @@ fn access_control(req: AccessControlRequest) -> Result<(), RegistryError> {
         }
     }
 
-    Ok(())
+    Ok(AccessControlResponse { generation })
 }
 
 fn state_transition(req: StateTransitionRequest) -> Result<(), RegistryError> {
@@ -200,6 +213,7 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), RegistryError> {
         vault_authority_acc_info,
         tok_program_acc_info,
         registrar_acc_info,
+        generation,
     } = req;
 
     // Redeem the `spt_amount` tokens for the underlying basket, transferring
@@ -218,7 +232,9 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), RegistryError> {
         //       a separate vault/community-fund.
         asset_amounts = pool_return_forfeited_assets(
             pool,
-            member,
+            generation
+                .as_ref()
+                .expect("generation must be provided when inactive"),
             asset_amounts,
             vault_acc_info,
             mega_vault_acc_info,
@@ -263,7 +279,7 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), RegistryError> {
 // tokens back into the pool (i.e., when marking to the current price).
 fn pool_return_forfeited_assets<'a, 'b, 'c>(
     pool: &'c Pool<'a, 'b>,
-    member: &'c Member,
+    generation: &'c Generation,
     current_asset_amounts: Vec<u64>,
     vault_acc_info: &'a AccountInfo<'b>,
     mega_vault_acc_info: Option<&'a AccountInfo<'b>>,
@@ -274,7 +290,7 @@ fn pool_return_forfeited_assets<'a, 'b, 'c>(
     spt_amount: u64,
 ) -> Result<Vec<u64>, RegistryError> {
     // The basket amounts the user will receive upon withdrawal.
-    let marked_asset_amounts = member
+    let marked_asset_amounts = generation
         .last_active_prices
         .basket_quantities(spt_amount, pool.is_mega())?;
     assert!(current_asset_amounts.len() == marked_asset_amounts.len());
@@ -326,9 +342,14 @@ struct AccessControlRequest<'a, 'b, 'c> {
     vault_acc_info: &'a AccountInfo<'b>,
     mega_vault_acc_info: Option<&'a AccountInfo<'b>>,
     vault_authority_acc_info: &'a AccountInfo<'b>,
+    generation_acc_info: Option<&'a AccountInfo<'b>>,
     program_id: &'a Pubkey,
     registrar: &'c Registrar,
     pool: &'c Pool<'a, 'b>,
+}
+
+struct AccessControlResponse {
+    generation: Option<Generation>,
 }
 
 struct StateTransitionRequest<'a, 'b, 'c> {
@@ -344,5 +365,6 @@ struct StateTransitionRequest<'a, 'b, 'c> {
     member: &'c mut Member,
     registrar: &'c Registrar,
     clock: &'c Clock,
+    generation: &'c Option<Generation>,
     spt_amount: u64,
 }

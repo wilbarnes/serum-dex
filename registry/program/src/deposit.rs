@@ -115,6 +115,7 @@ fn access_control(req: AccessControlRequest) -> Result<AccessControlResponse, Re
     let _vault = access_control::vault(vault_acc_info, registrar_acc_info, registrar, program_id)?;
     let depositor = access_control::token(depositor_acc_info, depositor_authority_acc_info.key)?;
     pool_check(program_id, pool, registrar_acc_info, registrar, &member)?;
+
     // Deposit specific: none.
 
     Ok(AccessControlResponse { depositor })

@@ -1,6 +1,6 @@
 use serum_common::pack::*;
 use serum_registry::access_control;
-use serum_registry::accounts::{Member, Watchtower};
+use serum_registry::accounts::Member;
 use serum_registry::error::{RegistryError, RegistryErrorCode};
 use solana_program::info;
 use solana_sdk::account_info::{next_account_info, AccountInfo};
@@ -10,7 +10,6 @@ use std::convert::Into;
 pub fn handler(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    watchtower: Option<Watchtower>,
     delegate: Option<Pubkey>,
 ) -> Result<(), RegistryError> {
     info!("handler: update_member");
@@ -30,12 +29,7 @@ pub fn handler(
     Member::unpack_mut(
         &mut member_acc_info.try_borrow_mut_data()?,
         &mut |member: &mut Member| {
-            state_transition(StateTransitionRequest {
-                member,
-                watchtower,
-                delegate,
-            })
-            .map_err(Into::into)
+            state_transition(StateTransitionRequest { member, delegate }).map_err(Into::into)
         },
     )?;
 
@@ -74,15 +68,8 @@ fn access_control(req: AccessControlRequest) -> Result<(), RegistryError> {
 fn state_transition(req: StateTransitionRequest) -> Result<(), RegistryError> {
     info!("state-transition: update_member");
 
-    let StateTransitionRequest {
-        member,
-        watchtower,
-        delegate,
-    } = req;
+    let StateTransitionRequest { member, delegate } = req;
 
-    if let Some(wt) = watchtower {
-        member.watchtower = wt;
-    }
     if let Some(d) = delegate {
         member.set_delegate(d);
     }
@@ -101,6 +88,5 @@ struct AccessControlRequest<'a, 'b> {
 
 struct StateTransitionRequest<'a> {
     member: &'a mut Member,
-    watchtower: Option<Watchtower>,
     delegate: Option<Pubkey>,
 }

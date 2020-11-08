@@ -177,8 +177,6 @@ fn lifecycle() {
                 registrar,
                 beneficiary,
                 delegate: safe_vault_authority,
-                watchtower: Pubkey::new_from_array([0; 32]),
-                watchtower_dest: Pubkey::new_from_array([0; 32]),
             })
             .unwrap();
 

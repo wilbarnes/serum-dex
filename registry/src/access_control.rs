@@ -1,4 +1,4 @@
-use crate::accounts::{vault, Entity, Member, PendingWithdrawal, Registrar};
+use crate::accounts::{vault, Entity, Generation, Member, PendingWithdrawal, Registrar};
 use crate::error::{RegistryError, RegistryErrorCode};
 use serum_common::pack::*;
 use solana_client_gen::solana_sdk;
@@ -128,6 +128,47 @@ pub fn member_raw(
         return Err(RegistryErrorCode::MemberEntityMismatch)?;
     }
     Ok(m)
+}
+
+pub fn generation(
+    generation_acc_info: &AccountInfo,
+    entity_acc_info: &AccountInfo,
+    member: &Member,
+    program_id: &Pubkey,
+) -> Result<Generation, RegistryError> {
+    let g = Generation::unpack(&generation_acc_info.try_borrow_data()?)?;
+    generation_check(
+        program_id,
+        &g,
+        generation_acc_info,
+        entity_acc_info,
+        member.generation,
+    )?;
+
+    Ok(g)
+}
+
+pub fn generation_check(
+    program_id: &Pubkey,
+    g: &Generation,
+    generation_acc_info: &AccountInfo,
+    entity_acc_info: &AccountInfo,
+    expected_generation: u64,
+) -> Result<(), RegistryError> {
+    if generation_acc_info.owner != program_id {
+        return Err(RegistryErrorCode::InvalidOwner)?;
+    }
+    if !g.initialized {
+        return Err(RegistryErrorCode::NotInitialized)?;
+    }
+    if g.generation != expected_generation {
+        return Err(RegistryErrorCode::InvalidGenerationNumber)?;
+    }
+    if &g.entity != entity_acc_info.key {
+        return Err(RegistryErrorCode::GenerationEntityMismatch)?;
+    }
+
+    Ok(())
 }
 
 pub fn vault_join(

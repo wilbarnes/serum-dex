@@ -109,11 +109,6 @@ impl Entity {
         self.balances.mega_stake_intent += mega_asset_amount;
     }
 
-    /// Transitions the EntityState finite state machine. This should be called
-    /// immediately before processing any instruction relying on the most up
-    /// to date status of the EntityState. It should also be called after any
-    /// mutation to the SRM equivalent deposit of this entity to keep the state
-    /// up to date.
     #[inline(never)]
     pub fn transition_activation_if_needed(
         &mut self,
