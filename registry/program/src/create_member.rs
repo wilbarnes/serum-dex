@@ -107,6 +107,7 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), RegistryError> {
     member.beneficiary = *beneficiary_acc_info.key;
     member.generation = 0;
     member.books = MemberBooks::new(*beneficiary_acc_info.key, delegate);
+    member.last_active_prices = Default::default();
 
     Ok(())
 }

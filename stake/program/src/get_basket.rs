@@ -8,11 +8,15 @@ pub fn handler(
     spt_amount: u64,
     is_creation: bool,
 ) -> Result<Basket, StakeError> {
-    // TODO: check the semantics of this make sense.
-    //
-    // If no pool tokens are in circulation, then to create `spt_amount`
-    // one must deposit the same `spt_amount`. Otherwise, take a
-    // `simple_basket`.
+    stake_simple_basket(ctx, state, spt_amount, is_creation)
+}
+
+pub fn stake_simple_basket(
+    ctx: &PoolContext,
+    state: &PoolState,
+    spt_amount: u64,
+    is_creation: bool,
+) -> Result<Basket, StakeError> {
     if ctx.total_pool_tokens()? == 0 {
         let quantities = match state.assets.len() {
             1 => vec![spt_amount as i64],

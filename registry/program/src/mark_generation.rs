@@ -62,6 +62,7 @@ fn access_control(req: AccessControlRequest) -> Result<AccessControlResponse, Re
 
     let g = Generation::unpack(&generation_acc_info.try_borrow_data()?)?;
     if g.initialized {
+        // Only allow the `last_active_price` to change on the Generation.
         access_control::generation_check(
             program_id,
             &g,

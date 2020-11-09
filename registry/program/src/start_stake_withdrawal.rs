@@ -3,7 +3,7 @@ use crate::entity::{with_entity, EntityContext};
 use crate::pool::{pool_check, Pool, PoolConfig};
 use serum_common::pack::Pack;
 use serum_registry::access_control;
-use serum_registry::accounts::entity::EntityState;
+use serum_registry::accounts::entity::{EntityState, PoolPrices};
 use serum_registry::accounts::pending_withdrawal::PendingPayment;
 use serum_registry::accounts::vault;
 use serum_registry::accounts::{Entity, Generation, Member, PendingWithdrawal, Registrar};
@@ -232,9 +232,10 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), RegistryError> {
         //       a separate vault/community-fund.
         asset_amounts = pool_return_forfeited_assets(
             pool,
-            generation
-                .as_ref()
-                .expect("generation must be provided when inactive"),
+            match generation.as_ref() {
+                None => &member.last_active_prices,
+                Some(g) => &g.last_active_prices,
+            },
             asset_amounts,
             vault_acc_info,
             mega_vault_acc_info,
@@ -279,7 +280,7 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), RegistryError> {
 // tokens back into the pool (i.e., when marking to the current price).
 fn pool_return_forfeited_assets<'a, 'b, 'c>(
     pool: &'c Pool<'a, 'b>,
-    generation: &'c Generation,
+    prices: &'c PoolPrices,
     current_asset_amounts: Vec<u64>,
     vault_acc_info: &'a AccountInfo<'b>,
     mega_vault_acc_info: Option<&'a AccountInfo<'b>>,
@@ -290,9 +291,7 @@ fn pool_return_forfeited_assets<'a, 'b, 'c>(
     spt_amount: u64,
 ) -> Result<Vec<u64>, RegistryError> {
     // The basket amounts the user will receive upon withdrawal.
-    let marked_asset_amounts = generation
-        .last_active_prices
-        .basket_quantities(spt_amount, pool.is_mega())?;
+    let marked_asset_amounts = prices.basket_quantities(spt_amount, pool.is_mega())?;
     assert!(current_asset_amounts.len() == marked_asset_amounts.len());
     assert!(current_asset_amounts.len() == 2);
 

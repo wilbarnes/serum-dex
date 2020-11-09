@@ -1,3 +1,4 @@
+use crate::get_basket::stake_simple_basket;
 use serum_pool::context::{PoolContext, UserAccounts};
 use serum_pool_schema::{Basket, PoolState};
 use serum_stake::accounts::vault;
@@ -37,28 +38,7 @@ pub fn handler(
     }
 
     // Quantities needed to create the `spt_amount` of staking pool tokens.
-    let basket = {
-        if ctx.total_pool_tokens()? == 0 {
-            if registry_deposit_acc_infos.len() == 1 {
-                Basket {
-                    quantities: vec![spt_amount
-                        .try_into()
-                        .map_err(|_| StakeErrorCode::FailedCast)?],
-                }
-            } else {
-                Basket {
-                    quantities: vec![
-                        0,
-                        spt_amount
-                            .try_into()
-                            .map_err(|_| StakeErrorCode::FailedCast)?,
-                    ],
-                }
-            }
-        } else {
-            ctx.get_simple_basket(spt_amount, true)?
-        }
-    };
+    let basket = stake_simple_basket(ctx, state, spt_amount, true)?;
 
     // Transfer the SRM *into* the pool.
     {

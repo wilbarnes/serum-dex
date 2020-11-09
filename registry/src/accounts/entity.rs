@@ -235,10 +235,10 @@ impl Default for EntityState {
 pub struct PoolPrices {
     /// `basket` represents the underlying asset Basket for a *single* SRM
     /// staking pool token. It has as single asset: SRM.
-    basket: Basket,
+    pub basket: Basket,
     /// `mega_basket` represents the underlying asset Basket for a *single* MSRM
     /// staking pool token. It has two assets: MSRM and SRM.
-    mega_basket: Basket,
+    pub mega_basket: Basket,
 }
 
 impl Default for PoolPrices {

@@ -16,7 +16,7 @@ pub fn handler(
 
     let &UserAccounts {
         pool_token_account,                        // Owned by Registry.
-        asset_accounts: registry_escrow_acc_infos, // Registry escrow vaults.
+        asset_accounts: registry_escrow_acc_infos, // Registry deposit vaults.
         authority: registry_signer_acc_info,       // Registry's program-derived address.
     } = ctx
         .user_accounts

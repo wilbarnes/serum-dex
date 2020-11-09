@@ -154,7 +154,7 @@ pub mod instruction {
         ///
         /// ..              Execute pool accounts.
         ///
-        /// -1. `[]`        Generation (optional). Must be provided when
+        /// -1. `[]`        Generation (optional). Can be provided when
         ///                 withdrawing from an *inactive* entity.
         StartStakeWithdrawal { amount: u64 },
         /// Accounts:

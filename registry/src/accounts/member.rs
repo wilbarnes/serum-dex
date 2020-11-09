@@ -26,6 +26,11 @@ pub struct Member {
     pub generation: u64,
     /// The balance subbaccounts that partition the Member's stake balance.
     pub books: MemberBooks,
+    /// The *last* stake context used when creating a staking pool token.
+    /// This is used as a fallback mechanism, to mark the price of a staking
+    /// pool token when a withdrawal on an inactive entity happens *and*
+    /// no `Generation` is provided to the stake withdrawal instruction.
+    pub last_active_prices: PoolPrices,
 }
 
 impl Member {
@@ -178,12 +183,19 @@ impl Member {
             let basket = prices.basket_quantities(amount, mega)?;
             self.books.stake_intent -= basket[0];
             self.books.mega_stake_intent -= basket[1];
+
+            // Only modify the prices of the basket the member is creating.
+            self.last_active_prices.mega_basket = prices.mega_basket.clone();
         } else {
             self.books.spt_amount += amount;
 
             let basket = prices.basket_quantities(amount, mega)?;
             self.books.stake_intent -= basket[0];
+
+            // Only modify the prices of the basket the member is creating.
+            self.last_active_prices.basket = prices.basket.clone();
         }
+
         Ok(())
     }
 
