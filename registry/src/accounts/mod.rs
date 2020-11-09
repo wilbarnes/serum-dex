@@ -7,6 +7,6 @@ pub mod vault;
 
 pub use entity::{Entity, EntityState};
 pub use generation::Generation;
-pub use member::{Member, MemberBooks};
+pub use member::{Member, MemberBalances};
 pub use pending_withdrawal::PendingWithdrawal;
 pub use registrar::Registrar;

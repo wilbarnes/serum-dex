@@ -57,7 +57,7 @@ fn access_control(req: AccessControlRequest) -> Result<(), RegistryError> {
     // UpdateMember specific.
     if delegate.is_some() {
         // Can't overwrite the delegate if it has funds in use.
-        if !member.books.delegate().balances.is_empty() {
+        if !member.balances.delegate.is_empty() {
             return Err(RegistryErrorCode::DelegateInUse)?;
         }
     }
@@ -73,8 +73,6 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), RegistryError> {
     if let Some(d) = delegate {
         member.set_delegate(d);
     }
-
-    info!("state-transition: success");
 
     Ok(())
 }

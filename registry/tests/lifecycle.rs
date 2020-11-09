@@ -46,7 +46,6 @@ fn lifecycle() {
         nonce,
         pool_vault_signer_nonce,
         pool,
-        mega_pool,
         ..
     } = client
         .initialize(InitializeRequest {
@@ -184,16 +183,16 @@ fn lifecycle() {
         assert_eq!(member_account.initialized, true);
         assert_eq!(member_account.entity, entity);
         assert_eq!(member_account.beneficiary, beneficiary.pubkey());
-        assert_eq!(member_account.books.delegate().owner, safe_vault_authority,);
-        assert_eq!(member_account.books.spt_amount, 0);
-        assert_eq!(member_account.books.spt_mega_amount, 0);
+        assert_eq!(member_account.balances.delegate.owner, safe_vault_authority,);
+        assert_eq!(member_account.balances.spt_amount, 0);
+        assert_eq!(member_account.balances.spt_mega_amount, 0);
         member
     };
 
     // Stake intent.
     let god_acc = rpc::get_token_account::<TokenAccount>(client.rpc(), &god.pubkey()).unwrap();
     let god_balance_before = god_acc.amount;
-    let stake_intent_amount = 100;
+    let current_deposit_amount = 100;
     {
         client
             .deposit(DepositRequest {
@@ -203,14 +202,14 @@ fn lifecycle() {
                 depositor: god.pubkey(),
                 depositor_authority: &god_owner,
                 registrar,
-                amount: stake_intent_amount,
+                amount: current_deposit_amount,
                 pool_program_id: stake_pid,
             })
             .unwrap();
-        let vault = client.stake_intent_vault(&registrar).unwrap();
-        assert_eq!(stake_intent_amount, vault.amount);
+        let vault = client.current_deposit_vault(&registrar).unwrap();
+        assert_eq!(current_deposit_amount, vault.amount);
         let god_acc = rpc::get_token_account::<TokenAccount>(client.rpc(), &god.pubkey()).unwrap();
-        assert_eq!(god_acc.amount, god_balance_before - stake_intent_amount);
+        assert_eq!(god_acc.amount, god_balance_before - current_deposit_amount);
     }
 
     // Stake intent withdrawal.
@@ -222,11 +221,11 @@ fn lifecycle() {
                 entity,
                 depositor: god.pubkey(),
                 registrar,
-                amount: stake_intent_amount,
+                amount: current_deposit_amount,
                 pool_program_id: stake_pid,
             })
             .unwrap();
-        let vault = client.stake_intent_vault(&registrar).unwrap();
+        let vault = client.current_deposit_vault(&registrar).unwrap();
         assert_eq!(0, vault.amount);
         let god_acc = rpc::get_token_account::<TokenAccount>(client.rpc(), &god.pubkey()).unwrap();
         assert_eq!(god_acc.amount, god_balance_before);
@@ -237,7 +236,7 @@ fn lifecycle() {
     {
         l_client
             .registry_deposit(RegistryDepositRequest {
-                amount: stake_intent_amount,
+                amount: current_deposit_amount,
                 is_mega: false,
                 registry_pid: *client.program(),
                 registrar,
@@ -250,17 +249,17 @@ fn lifecycle() {
                 pool_program_id: stake_pid,
             })
             .unwrap();
-        let vault = client.stake_intent_vault(&registrar).unwrap();
-        assert_eq!(stake_intent_amount, vault.amount);
+        let vault = client.current_deposit_vault(&registrar).unwrap();
+        assert_eq!(current_deposit_amount, vault.amount);
         let l_vault = l_client.vault(&safe).unwrap();
-        assert_eq!(l_vault_amount - stake_intent_amount, l_vault.amount);
+        assert_eq!(l_vault_amount - current_deposit_amount, l_vault.amount);
     }
 
     // Stake intent withdrawal back to lockup.
     {
         l_client
             .registry_withdraw(RegistryWithdrawRequest {
-                amount: stake_intent_amount,
+                amount: current_deposit_amount,
                 is_mega: false,
                 registry_pid: *client.program(),
                 registrar,
@@ -273,7 +272,7 @@ fn lifecycle() {
                 pool_program_id: stake_pid,
             })
             .unwrap();
-        let vault = client.stake_intent_vault(&registrar).unwrap();
+        let vault = client.current_deposit_vault(&registrar).unwrap();
         assert_eq!(0, vault.amount);
         let l_vault = l_client.vault(&safe).unwrap();
         assert_eq!(l_vault_amount, l_vault.amount);
@@ -338,7 +337,7 @@ fn lifecycle() {
                 depositor: god.pubkey(),
                 depositor_authority: &god_owner,
                 registrar,
-                amount: stake_intent_amount,
+                amount: current_deposit_amount,
                 pool_program_id: stake_pid,
             })
             .unwrap();
@@ -356,14 +355,14 @@ fn lifecycle() {
                 member,
                 beneficiary,
                 user_pool_token: None,
-                pool_token_amount: stake_intent_amount,
+                pool_token_amount: current_deposit_amount,
                 pool_program_id: stake_pid,
                 mega: false,
             })
             .unwrap();
         let user_pool_token_acc: TokenAccount =
             rpc::get_token_account(client.rpc(), &user_pool_token).unwrap();
-        assert_eq!(user_pool_token_acc.amount, stake_intent_amount);
+        assert_eq!(user_pool_token_acc.amount, current_deposit_amount);
         assert_eq!(
             user_pool_token_acc.owner,
             client.vault_authority(&registrar).unwrap()
@@ -374,9 +373,9 @@ fn lifecycle() {
         );
 
         let pool_vault = client.stake_pool_asset_vault(&registrar).unwrap();
-        assert_eq!(pool_vault.amount, stake_intent_amount);
+        assert_eq!(pool_vault.amount, current_deposit_amount);
 
-        let vault = client.stake_intent_vault(&registrar).unwrap();
+        let vault = client.current_deposit_vault(&registrar).unwrap();
         assert_eq!(vault.amount, 0);
 
         user_pool_token
@@ -393,7 +392,7 @@ fn lifecycle() {
                 entity,
                 member,
                 beneficiary,
-                spt_amount: stake_intent_amount,
+                spt_amount: current_deposit_amount,
                 mega: false,
                 user_pool_token,
                 pool_program_id: stake_pid,
@@ -401,11 +400,11 @@ fn lifecycle() {
             .unwrap();
 
         let member_acc = client.member(&member).unwrap();
-        assert_eq!(member_acc.books.spt_amount, 0);
-        assert_eq!(member_acc.books.stake_intent, 0);
+        assert_eq!(member_acc.balances.spt_amount, 0);
+        assert_eq!(member_acc.balances.current_deposit, 0);
 
-        let vault = client.stake_intent_vault(&registrar).unwrap();
-        assert_eq!(vault.amount, stake_intent_amount);
+        let vault = client.current_deposit_vault(&registrar).unwrap();
+        assert_eq!(vault.amount, current_deposit_amount);
 
         let user_pool_token: TokenAccount =
             rpc::get_token_account(client.rpc(), &user_pool_token).unwrap();
@@ -422,12 +421,12 @@ fn lifecycle() {
             pending_withdrawal_acc.end_ts,
             pending_withdrawal_acc.start_ts + deactivation_timelock
         );
-        assert_eq!(pending_withdrawal_acc.spt_amount, stake_intent_amount);
+        assert_eq!(pending_withdrawal_acc.spt_amount, current_deposit_amount);
         assert_eq!(pending_withdrawal_acc.pool, pool);
         assert_eq!(
             pending_withdrawal_acc.payment,
             PendingPayment {
-                asset_amount: stake_intent_amount,
+                asset_amount: current_deposit_amount,
                 mega_asset_amount: 0,
             }
         );
@@ -447,12 +446,12 @@ fn lifecycle() {
                 pending_withdrawal,
             })
             .unwrap();
-        let vault = client.stake_intent_vault(&registrar).unwrap();
-        assert_eq!(vault.amount, stake_intent_amount);
+        let vault = client.current_deposit_vault(&registrar).unwrap();
+        assert_eq!(vault.amount, current_deposit_amount);
 
         let member = client.member(&member).unwrap();
-        assert_eq!(member.books.spt_amount, 0);
-        assert_eq!(member.books.stake_intent, stake_intent_amount);
+        assert_eq!(member.balances.spt_amount, 0);
+        assert_eq!(member.balances.current_deposit, current_deposit_amount);
     }
 
     // Entity switch.

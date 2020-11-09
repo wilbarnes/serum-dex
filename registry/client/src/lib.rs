@@ -520,12 +520,12 @@ impl Client {
 
         let r = self.registrar(&registrar)?;
 
-        let vault = self.stake_intent_vault(registrar)?;
+        let vault = self.current_deposit_vault(registrar)?;
         if vault.mint == depositor.mint {
             return Ok(r.vault);
         }
 
-        let mega_vault = self.stake_intent_mega_vault(registrar)?;
+        let mega_vault = self.current_deposit_mega_vault(registrar)?;
         if mega_vault.mint == depositor.mint {
             return Ok(r.mega_vault);
         }
@@ -536,11 +536,14 @@ impl Client {
         Pubkey::create_program_address(&vault::signer_seeds(registrar, &r.nonce), self.program())
             .map_err(|_| ClientError::Any(anyhow::anyhow!("invalid vault authority")))
     }
-    pub fn stake_intent_vault(&self, registrar: &Pubkey) -> Result<TokenAccount, ClientError> {
+    pub fn current_deposit_vault(&self, registrar: &Pubkey) -> Result<TokenAccount, ClientError> {
         let r = self.registrar(registrar)?;
         rpc::get_token_account::<TokenAccount>(self.inner.rpc(), &r.vault).map_err(Into::into)
     }
-    pub fn stake_intent_mega_vault(&self, registrar: &Pubkey) -> Result<TokenAccount, ClientError> {
+    pub fn current_deposit_mega_vault(
+        &self,
+        registrar: &Pubkey,
+    ) -> Result<TokenAccount, ClientError> {
         let r = self.registrar(registrar)?;
         rpc::get_token_account::<TokenAccount>(self.inner.rpc(), &r.mega_vault).map_err(Into::into)
     }

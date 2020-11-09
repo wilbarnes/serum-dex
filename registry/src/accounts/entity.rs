@@ -35,43 +35,39 @@ pub struct Entity {
 
 impl Entity {
     pub fn remove(&mut self, member: &Member) {
-        self.balances.stake_intent -= member.books.stake_intent;
-        self.balances.mega_stake_intent -= member.books.mega_stake_intent;
-        self.balances.spt_amount -= member.books.spt_amount;
-        self.balances.spt_mega_amount -= member.books.spt_mega_amount;
+        self.balances.current_deposit -= member.balances.current_deposit;
+        self.balances.current_mega_deposit -= member.balances.current_mega_deposit;
+        self.balances.spt_amount -= member.balances.spt_amount;
+        self.balances.spt_mega_amount -= member.balances.spt_mega_amount;
     }
 
     pub fn add(&mut self, member: &Member) {
-        self.balances.stake_intent += member.books.stake_intent;
-        self.balances.mega_stake_intent += member.books.mega_stake_intent;
-        self.balances.spt_amount += member.books.spt_amount;
-        self.balances.spt_mega_amount += member.books.spt_mega_amount;
+        self.balances.current_deposit += member.balances.current_deposit;
+        self.balances.current_mega_deposit += member.balances.current_mega_deposit;
+        self.balances.spt_amount += member.balances.spt_amount;
+        self.balances.spt_mega_amount += member.balances.spt_mega_amount;
     }
 
-    /// Returns the amount of stake contributing to the activation level.
     pub fn activation_amount(&self, ctx: &PoolPrices) -> u64 {
-        self.amount_equivalent(ctx) + self.stake_intent_equivalent()
+        self.amount_equivalent(ctx) + self.current_deposit_equivalent()
     }
 
-    /// Adds to the stake intent balance.
     pub fn did_deposit(&mut self, amount: u64, mega: bool) {
         if mega {
-            self.balances.mega_stake_intent += amount;
+            self.balances.current_mega_deposit += amount;
         } else {
-            self.balances.stake_intent += amount;
+            self.balances.current_deposit += amount;
         }
     }
 
-    /// Subtracts from the stake intent balance.
     pub fn did_withdraw(&mut self, amount: u64, mega: bool) {
         if mega {
-            self.balances.mega_stake_intent -= amount;
+            self.balances.current_mega_deposit -= amount;
         } else {
-            self.balances.stake_intent -= amount;
+            self.balances.current_deposit -= amount;
         }
     }
 
-    /// Adds to the stake balance.
     pub fn spt_did_create(
         &mut self,
         prices: &PoolPrices,
@@ -82,20 +78,18 @@ impl Entity {
             self.balances.spt_mega_amount += amount;
 
             let basket = prices.basket_quantities(amount, is_mega)?;
-            self.balances.stake_intent -= basket[0];
-            self.balances.mega_stake_intent -= basket[1];
+            self.balances.current_deposit -= basket[0];
+            self.balances.current_mega_deposit -= basket[1];
         } else {
             self.balances.spt_amount += amount;
 
             let basket = prices.basket_quantities(amount, is_mega)?;
-            self.balances.stake_intent -= basket[0];
+            self.balances.current_deposit -= basket[0];
         }
 
         Ok(())
     }
 
-    // Stake intent balances are not increased since that must happen
-    // *after* the stake withdrawal timelock.
     pub fn spt_did_redeem_start(&mut self, spt_amount: u64, mega: bool) {
         if mega {
             self.balances.spt_mega_amount -= spt_amount;
@@ -105,8 +99,8 @@ impl Entity {
     }
 
     pub fn spt_did_redeem_end(&mut self, asset_amount: u64, mega_asset_amount: u64) {
-        self.balances.stake_intent += asset_amount;
-        self.balances.mega_stake_intent += mega_asset_amount;
+        self.balances.current_deposit += asset_amount;
+        self.balances.current_mega_deposit += mega_asset_amount;
     }
 
     #[inline(never)]
@@ -146,7 +140,7 @@ impl Entity {
     /// enter the staking pool.
     pub fn meets_activation_requirements(&self, ctx: &PoolPrices, registrar: &Registrar) -> bool {
         self.activation_amount(ctx) >= registrar.reward_activation_threshold
-            && (self.balances.spt_mega_amount >= 1 || self.balances.mega_stake_intent >= 1)
+            && (self.balances.spt_mega_amount >= 1 || self.balances.current_mega_deposit >= 1)
     }
 
     pub fn slash(&mut self, spt_amount: u64, mega: bool) {
@@ -165,8 +159,8 @@ impl Entity {
             + ctx.srm_equivalent(self.balances.spt_mega_amount, true)
     }
 
-    fn stake_intent_equivalent(&self) -> u64 {
-        self.balances.stake_intent + self.balances.mega_stake_intent * 1_000_000
+    fn current_deposit_equivalent(&self) -> u64 {
+        self.balances.current_deposit + self.balances.current_mega_deposit * 1_000_000
     }
 }
 
@@ -178,8 +172,8 @@ pub struct Balances {
     pub spt_amount: u64,
     pub spt_mega_amount: u64,
     // Denominated in SRM/MSRM.
-    pub stake_intent: u64,
-    pub mega_stake_intent: u64,
+    pub current_deposit: u64,
+    pub current_mega_deposit: u64,
 }
 
 /// EntityState defines a finite-state-machine (FSM) determining the actions

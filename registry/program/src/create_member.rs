@@ -1,6 +1,6 @@
 use serum_common::pack::Pack;
 use serum_registry::access_control;
-use serum_registry::accounts::{Member, MemberBooks};
+use serum_registry::accounts::{Member, MemberBalances};
 use serum_registry::error::{RegistryError, RegistryErrorCode};
 use solana_program::info;
 use solana_sdk::account_info::{next_account_info, AccountInfo};
@@ -106,7 +106,7 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), RegistryError> {
     member.entity = *entity_acc_info.key;
     member.beneficiary = *beneficiary_acc_info.key;
     member.generation = 0;
-    member.books = MemberBooks::new(*beneficiary_acc_info.key, delegate);
+    member.balances = MemberBalances::new(*beneficiary_acc_info.key, delegate);
     member.last_active_prices = Default::default();
 
     Ok(())

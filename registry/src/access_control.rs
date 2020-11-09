@@ -71,7 +71,7 @@ pub fn delegate_check(
     delegate_owner_acc_info: Option<&AccountInfo>,
     is_delegate: bool,
 ) -> Result<(), RegistryError> {
-    if is_delegate && *delegate_owner_acc_info.unwrap().key != member.books.delegate().owner {
+    if is_delegate && *delegate_owner_acc_info.unwrap().key != member.balances.delegate.owner {
         return Err(RegistryErrorCode::MemberDelegateMismatch)?;
     }
     Ok(())
