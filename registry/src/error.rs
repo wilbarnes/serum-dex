@@ -56,6 +56,7 @@ pub enum RegistryErrorCode {
     InvalidStakeTokenDelegate = 42,
     GenerationEntityMismatch = 43,
     InvalidGenerationNumber = 44,
+    EntityMaxStake = 45,
     Unknown = 1000,
 }
 

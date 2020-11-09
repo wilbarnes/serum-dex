@@ -150,11 +150,8 @@ impl Entity {
             self.balances.spt_amount -= spt_amount;
         }
     }
-}
 
-// Private methods.
-impl Entity {
-    fn amount_equivalent(&self, ctx: &PoolPrices) -> u64 {
+    pub fn amount_equivalent(&self, ctx: &PoolPrices) -> u64 {
         ctx.srm_equivalent(self.balances.spt_amount, false)
             + ctx.srm_equivalent(self.balances.spt_mega_amount, true)
     }

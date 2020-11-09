@@ -29,6 +29,7 @@ pub mod instruction {
             withdrawal_timelock: i64,
             deactivation_timelock: i64,
             reward_activation_threshold: u64,
+            max_stake_per_entity: u64,
         },
         /// Accounts:
         ///
@@ -39,6 +40,7 @@ pub mod instruction {
             withdrawal_timelock: Option<i64>,
             deactivation_timelock: Option<i64>,
             reward_activation_threshold: Option<u64>,
+            max_stake_per_entity: Option<u64>,
         },
         /// Accounts:
         ///

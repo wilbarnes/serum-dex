@@ -36,6 +36,7 @@ fn lifecycle() {
     let withdrawal_timelock = 1234;
     let deactivation_timelock = 10;
     let reward_activation_threshold = 10;
+    let max_stake_per_entity = 100_000_000;
     let registrar_authority = Keypair::generate(&mut OsRng);
     let stake_pid: Pubkey = std::env::var("TEST_STAKE_PROGRAM_ID")
         .unwrap()
@@ -55,6 +56,7 @@ fn lifecycle() {
             mint: srm_mint.pubkey(),
             mega_mint: msrm_mint.pubkey(),
             reward_activation_threshold,
+            max_stake_per_entity,
             pool_program_id: stake_pid,
             pool_token_decimals: 3,
         })

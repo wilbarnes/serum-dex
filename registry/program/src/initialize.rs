@@ -14,6 +14,7 @@ pub fn handler(
     withdrawal_timelock: i64,
     deactivation_timelock: i64,
     reward_activation_threshold: u64,
+    max_stake_per_entity: u64,
 ) -> Result<(), RegistryError> {
     info!("handler: initialize");
 
@@ -48,6 +49,7 @@ pub fn handler(
                 nonce,
                 deactivation_timelock,
                 reward_activation_threshold,
+                max_stake_per_entity,
                 pool_program_acc_info, // Not validated.
                 pool_acc_info,         // Not validated.
                 mega_pool_acc_info,    // Not validated.
@@ -122,12 +124,14 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), RegistryError> {
         pool_acc_info,
         pool_program_acc_info,
         mega_pool_acc_info,
+        max_stake_per_entity,
     } = req;
 
     registrar.initialized = true;
     registrar.authority = authority;
     registrar.withdrawal_timelock = withdrawal_timelock;
     registrar.deactivation_timelock = deactivation_timelock;
+    registrar.max_stake_per_entity = max_stake_per_entity;
     registrar.vault = *vault_acc_info.key;
     registrar.mega_vault = *mega_vault_acc_info.key;
     registrar.nonce = nonce;
@@ -159,5 +163,6 @@ struct StateTransitionRequest<'a, 'b, 'c> {
     reward_activation_threshold: u64,
     deactivation_timelock: i64,
     withdrawal_timelock: i64,
+    max_stake_per_entity: u64,
     nonce: u8,
 }

@@ -126,6 +126,12 @@ fn access_control(req: AccessControlRequest) -> Result<AccessControlResponse, Re
         if !entity.meets_activation_requirements(pool.prices(), &registrar) {
             return Err(RegistryErrorCode::EntityNotActivated)?;
         }
+
+        // Will this new stake put the entity over the maximum allowable limit?
+        let spt_worth = pool.prices().srm_equivalent(spt_amount, pool.is_mega());
+        if spt_worth + entity.amount_equivalent(pool.prices()) > registrar.max_stake_per_entity {
+            return Err(RegistryErrorCode::EntityMaxStake)?;
+        }
     }
 
     Ok(AccessControlResponse { pool_token })

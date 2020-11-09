@@ -31,6 +31,7 @@ impl Client {
             registrar_authority,
             withdrawal_timelock,
             deactivation_timelock,
+            max_stake_per_entity,
             mint,
             mega_mint,
             reward_activation_threshold,
@@ -56,6 +57,7 @@ impl Client {
             reward_activation_threshold,
             &pool_program_id,
             pool_token_decimals,
+            max_stake_per_entity,
         )?;
         Ok(InitializeResponse {
             tx_create,
@@ -620,6 +622,7 @@ pub struct InitializeRequest {
     pub registrar_authority: Pubkey,
     pub withdrawal_timelock: i64,
     pub deactivation_timelock: i64,
+    pub max_stake_per_entity: u64,
     pub mint: Pubkey,
     pub mega_mint: Pubkey,
     pub reward_activation_threshold: u64,

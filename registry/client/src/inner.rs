@@ -18,6 +18,7 @@ pub fn initialize(
     reward_activation_threshold: u64,
     pool_program_id: &Pubkey,
     pool_token_decimals: u8,
+    max_stake_per_entity: u64,
 ) -> Result<(Signature, Signature, Pubkey, u8, Pubkey, u8, Pubkey, u8), InnerClientError> {
     let registrar_kp = Keypair::generate(&mut OsRng);
     let (registrar_vault_authority, nonce) =
@@ -171,6 +172,7 @@ pub fn initialize(
                 withdrawal_timelock,
                 deactivation_timelock_premium,
                 reward_activation_threshold,
+                max_stake_per_entity,
             )
         };
 

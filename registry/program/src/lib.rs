@@ -37,6 +37,7 @@ fn entry(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8])
             withdrawal_timelock,
             deactivation_timelock,
             reward_activation_threshold,
+            max_stake_per_entity,
         } => initialize::handler(
             program_id,
             accounts,
@@ -45,12 +46,14 @@ fn entry(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8])
             withdrawal_timelock,
             deactivation_timelock,
             reward_activation_threshold,
+            max_stake_per_entity,
         ),
         RegistryInstruction::UpdateRegistrar {
             new_authority,
             withdrawal_timelock,
             deactivation_timelock,
             reward_activation_threshold,
+            max_stake_per_entity,
         } => update_registrar::handler(
             program_id,
             accounts,
@@ -58,6 +61,7 @@ fn entry(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8])
             withdrawal_timelock,
             deactivation_timelock,
             reward_activation_threshold,
+            max_stake_per_entity,
         ),
         RegistryInstruction::CreateEntity => create_entity::handler(program_id, accounts),
         RegistryInstruction::UpdateEntity { leader } => {

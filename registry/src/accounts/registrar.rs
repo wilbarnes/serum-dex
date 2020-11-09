@@ -22,15 +22,16 @@ pub struct Registrar {
     /// The amount of tokens that must be deposited to be eligible for rewards,
     /// denominated in SRM.
     pub reward_activation_threshold: u64,
+    /// The maximum stake per node entity, denominated in SRM.
+    pub max_stake_per_entity: u64,
     /// Number of seconds that must pass for a withdrawal to complete.
     pub withdrawal_timelock: i64,
-    /// Number of seconds *in addition* to the withdrawal timelock it takes for
-    /// an Entity account to be "deactivated", from the moment it's SRM
-    /// equivalent amount drops below the required threshold.
+    /// Number of seconds it takes for an Entity to be "deactivated", from the
+    /// moment it's SRM/MSRM amount drops below the required threshold.
     pub deactivation_timelock: i64,
-    /// Vault holding stake-intent tokens.
+    /// Vault holding deposit tokens.
     pub vault: Pubkey,
-    /// Vault holding stake-intent mega tokens.
+    /// Vault holding deposit mega tokens.
     pub mega_vault: Pubkey,
     /// Address of the SRM staking pool.
     pub pool: Pubkey,
