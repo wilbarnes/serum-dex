@@ -18,13 +18,13 @@ pub struct Member {
     pub initialized: bool,
     /// Registrar the member belongs to.
     pub registrar: Pubkey,
-    /// Entity account providing membership.
+    /// Entity providing membership.
     pub entity: Pubkey,
-    /// The key that is allowed to redeem assets from the staking pool.
+    /// The effective owner of the Member account.
     pub beneficiary: Pubkey,
-    /// The entity's activation counter to which the stake belongs.
+    /// The entity's activation counter to which the Member stake belongs.
     pub generation: u64,
-    /// The balance subbaccounts that partition the Member's stake balance.
+    /// SRM, MSRM, and staking pool token balances.
     pub balances: MemberBalances,
     /// The *last* stake context used when creating a staking pool token.
     /// This is used as a fallback mechanism, to mark the price of a staking

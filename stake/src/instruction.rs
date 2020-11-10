@@ -1,4 +1,5 @@
 use borsh::BorshSerialize;
+use serum_common::shared_mem;
 use serum_pool_schema::{InitializePoolRequest, PoolAction, PoolRequest, PoolRequestInner};
 use solana_client_gen::solana_sdk::instruction::{AccountMeta, Instruction};
 use solana_client_gen::solana_sdk::pubkey::Pubkey;
@@ -46,11 +47,6 @@ pub fn initialize(
         accounts,
         data: req.try_to_vec().expect("PoolRequest serializes"),
     }
-}
-
-mod shared_mem {
-    // TODO: import the shared_mem crate instead of hardcoding here.
-    solana_sdk::declare_id!("shmem4EWT2sPdVGvTZCzXXRAURL9G5vpPxNwSeKhHUL");
 }
 
 pub fn get_basket(

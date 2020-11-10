@@ -151,9 +151,9 @@ impl Entity {
         }
     }
 
-    pub fn amount_equivalent(&self, ctx: &PoolPrices) -> u64 {
-        ctx.srm_equivalent(self.balances.spt_amount, false)
-            + ctx.srm_equivalent(self.balances.spt_mega_amount, true)
+    pub fn amount_equivalent(&self, prices: &PoolPrices) -> u64 {
+        prices.srm_equivalent(self.balances.spt_amount, false)
+            + prices.srm_equivalent(self.balances.spt_mega_amount, true)
     }
 
     fn current_deposit_equivalent(&self) -> u64 {

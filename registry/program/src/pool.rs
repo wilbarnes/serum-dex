@@ -1,5 +1,6 @@
 use borsh::de::BorshDeserialize;
 use serum_common::pack::Pack;
+use serum_common::shared_mem;
 use serum_pool_schema::{Basket, PoolAction};
 use serum_registry::accounts::entity::PoolPrices;
 use serum_registry::accounts::{vault, Member, Registrar};
@@ -10,7 +11,7 @@ use solana_sdk::program_pack::Pack as TokenPack;
 use solana_sdk::pubkey::Pubkey;
 use spl_token::state::Account as TokenAccount;
 
-// PoolAccounts is a CPI client for the registry to invoke the staking pool.
+// Pool is a CPI client for the registry to invoke the staking pool.
 #[derive(Clone)]
 pub struct Pool<'a, 'b> {
     is_mega: bool,
@@ -324,11 +325,6 @@ pub enum PoolConfig<'a, 'b> {
         is_create: bool,
     },
     GetBasket,
-}
-
-mod shared_mem {
-    // TODO: import the shared_mem crate instead of hardcoding here.
-    solana_sdk::declare_id!("shmem4EWT2sPdVGvTZCzXXRAURL9G5vpPxNwSeKhHUL");
 }
 
 // TODO: rename: pool_check_redeem.
