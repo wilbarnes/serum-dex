@@ -15,17 +15,17 @@ pub fn handler(
     info!("handler: redemption");
 
     let &UserAccounts {
-        pool_token_account,                        // Owned by Registry.
-        asset_accounts: registry_escrow_acc_infos, // Registry deposit vaults.
-        authority: registry_signer_acc_info,       // Registry's program-derived address.
+        pool_token_account,                         // Owned by Registry.
+        asset_accounts: registry_deposit_acc_infos, // Registry deposit vaults.
+        authority: registry_signer_acc_info,        // Registry's program-derived address.
     } = ctx
         .user_accounts
         .as_ref()
         .expect("transact requests have user accounts");
 
     assert!(ctx.custom_accounts.len() == 0);
-    assert!(registry_escrow_acc_infos.len() == 1 || registry_escrow_acc_infos.len() == 2);
-    assert!(ctx.pool_vault_accounts.len() == registry_escrow_acc_infos.len());
+    assert!(registry_deposit_acc_infos.len() == 1 || registry_deposit_acc_infos.len() == 2);
+    assert!(ctx.pool_vault_accounts.len() == registry_deposit_acc_infos.len());
 
     // Auth.
     if !registry_signer_acc_info.is_signer {
@@ -43,14 +43,14 @@ pub fn handler(
 
     // Transfer out the SRM to the user.
     {
-        let escrow_token_acc_info = &registry_escrow_acc_infos[0];
-        let pool_token_vault_acc_info = &ctx.pool_vault_accounts[0];
+        let escrow_token_acc_info = &registry_deposit_acc_infos[0];
+        let vault_acc_info = &ctx.pool_vault_accounts[0];
         let asset_amount = basket.quantities[0]
             .try_into()
             .map_err(|_| StakeErrorCode::InvalidU64)?;
         let transfer_instr = token_instruction::transfer(
             &spl_token::ID,
-            pool_token_vault_acc_info.key,
+            vault_acc_info.key,
             escrow_token_acc_info.key,
             ctx.pool_authority.key,
             &[],
@@ -60,7 +60,7 @@ pub fn handler(
             &transfer_instr,
             &[
                 escrow_token_acc_info.clone(),
-                pool_token_vault_acc_info.clone(),
+                vault_acc_info.clone(),
                 ctx.pool_authority.clone(),
                 ctx.spl_token_program.expect("must be provided").clone(),
             ],
@@ -69,15 +69,15 @@ pub fn handler(
     }
 
     // Transer out the MSRM to the user.
-    if registry_escrow_acc_infos.len() == 2 {
-        let escrow_token_acc_info = &registry_escrow_acc_infos[1];
-        let pool_token_vault_acc_info = &ctx.pool_vault_accounts[1];
+    if registry_deposit_acc_infos.len() == 2 {
+        let escrow_token_acc_info = &registry_deposit_acc_infos[1];
+        let mega_vault_acc_info = &ctx.pool_vault_accounts[1];
         let asset_amount = basket.quantities[1]
             .try_into()
             .map_err(|_| StakeErrorCode::InvalidU64)?;
         let transfer_instr = token_instruction::transfer(
             &spl_token::ID,
-            pool_token_vault_acc_info.key,
+            mega_vault_acc_info.key,
             escrow_token_acc_info.key,
             ctx.pool_authority.key,
             &[],
@@ -87,7 +87,7 @@ pub fn handler(
             &transfer_instr,
             &[
                 escrow_token_acc_info.clone(),
-                pool_token_vault_acc_info.clone(),
+                mega_vault_acc_info.clone(),
                 ctx.pool_authority.clone(),
                 ctx.spl_token_program.expect("must be provided").clone(),
             ],
