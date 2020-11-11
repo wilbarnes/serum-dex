@@ -9,6 +9,7 @@ use solana_sdk::pubkey::Pubkey;
 use solana_sdk::sysvar::clock::Clock;
 use std::convert::Into;
 
+#[inline(never)]
 pub fn handler(program_id: &Pubkey, accounts: &[AccountInfo]) -> Result<(), RegistryError> {
     info!("handler: switch_entity");
 
@@ -21,7 +22,7 @@ pub fn handler(program_id: &Pubkey, accounts: &[AccountInfo]) -> Result<(), Regi
     let new_entity_acc_info = next_account_info(acc_infos)?;
     let clock_acc_info = next_account_info(acc_infos)?;
 
-    let pool = &Pool::parse_accounts(PoolConfig::GetBasket, acc_infos)?;
+    let pool = &Pool::parse_accounts(acc_infos, PoolConfig::GetBasket)?;
 
     let AccessControlResponse { registrar, clock } = access_control(AccessControlRequest {
         member_acc_info,
@@ -114,9 +115,9 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), RegistryError> {
     } = req;
 
     curr_entity.remove(member);
-    curr_entity.transition_activation_if_needed(pool.prices(), registrar, clock);
-
     new_entity.add(member);
+
+    curr_entity.transition_activation_if_needed(pool.prices(), registrar, clock);
     new_entity.transition_activation_if_needed(pool.prices(), registrar, clock);
 
     member.entity = *new_entity_acc_info.key;

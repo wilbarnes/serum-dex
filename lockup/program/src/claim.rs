@@ -12,10 +12,10 @@ pub fn handler(program_id: &Pubkey, accounts: &[AccountInfo]) -> Result<(), Lock
 
     let acc_infos = &mut accounts.iter();
 
-    let vesting_acc_beneficiary_info = next_account_info(acc_infos)?;
+    let beneficiary_info = next_account_info(acc_infos)?;
     let vesting_acc_info = next_account_info(acc_infos)?;
     let safe_acc_info = next_account_info(acc_infos)?;
-    let safe_vault_authority_acc_info = next_account_info(acc_infos)?;
+    let vault_authority_acc_info = next_account_info(acc_infos)?;
     let _token_prog_acc_info = next_account_info(acc_infos)?;
     let mint_acc_info = next_account_info(acc_infos)?;
     let token_acc_info = next_account_info(acc_infos)?;
@@ -23,14 +23,14 @@ pub fn handler(program_id: &Pubkey, accounts: &[AccountInfo]) -> Result<(), Lock
     access_control(AccessControlRequest {
         program_id,
         safe_acc_info,
-        safe_vault_authority_acc_info,
+        vault_authority_acc_info,
         vesting_acc_info,
-        vesting_acc_beneficiary_info,
+        beneficiary_info,
         mint_acc_info,
         token_acc_info,
     })?;
 
-    Vesting::unpack_mut(
+    Vesting::unpack_unchecked_mut(
         &mut vesting_acc_info.try_borrow_mut_data()?,
         &mut |vesting_acc: &mut Vesting| {
             let safe = Safe::unpack(&safe_acc_info.try_borrow_data()?)?;
@@ -38,7 +38,7 @@ pub fn handler(program_id: &Pubkey, accounts: &[AccountInfo]) -> Result<(), Lock
                 accounts,
                 vesting_acc,
                 safe_acc_info,
-                safe_vault_authority_acc_info,
+                vault_authority_acc_info,
                 mint_acc_info,
                 token_acc_info,
                 nonce: safe.nonce,
@@ -56,22 +56,22 @@ fn access_control(req: AccessControlRequest) -> Result<(), LockupError> {
     let AccessControlRequest {
         program_id,
         safe_acc_info,
-        safe_vault_authority_acc_info,
+        vault_authority_acc_info,
         vesting_acc_info,
-        vesting_acc_beneficiary_info,
+        beneficiary_info,
         mint_acc_info,
         token_acc_info,
     } = req;
 
     // Beneficiary authorization.
-    if !vesting_acc_beneficiary_info.is_signer {
+    if !beneficiary_info.is_signer {
         return Err(LockupErrorCode::Unauthorized)?;
     }
 
     // Account validation.
     let safe = access_control::safe(safe_acc_info, program_id)?;
     let _ = access_control::vault_authority(
-        safe_vault_authority_acc_info,
+        vault_authority_acc_info,
         &safe_acc_info.key,
         &safe,
         program_id,
@@ -80,16 +80,19 @@ fn access_control(req: AccessControlRequest) -> Result<(), LockupError> {
         program_id,
         safe_acc_info.key,
         vesting_acc_info,
-        vesting_acc_beneficiary_info,
+        beneficiary_info,
     )?;
     let _ = access_control::locked_token(
         token_acc_info,
         mint_acc_info,
-        safe_vault_authority_acc_info.key,
+        vault_authority_acc_info.key,
         &vesting,
     )?;
 
     // Claim checks.
+    if vesting.needs_assignment.is_some() {
+        return Err(LockupErrorCode::VestingNotActivated)?;
+    }
     if vesting.claimed {
         return Err(LockupErrorCode::AlreadyClaimed)?;
     }
@@ -105,7 +108,7 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), LockupError> {
     let StateTransitionRequest {
         accounts,
         safe_acc_info,
-        safe_vault_authority_acc_info,
+        vault_authority_acc_info,
         mint_acc_info,
         token_acc_info,
         vesting_acc,
@@ -122,7 +125,7 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), LockupError> {
             &spl_token::ID,
             mint_acc_info.key,
             token_acc_info.key,
-            safe_vault_authority_acc_info.key,
+            vault_authority_acc_info.key,
             &[],
             vesting_acc.start_balance,
         )?;
@@ -143,9 +146,9 @@ fn state_transition(req: StateTransitionRequest) -> Result<(), LockupError> {
 struct AccessControlRequest<'a, 'b> {
     program_id: &'a Pubkey,
     safe_acc_info: &'a AccountInfo<'b>,
-    safe_vault_authority_acc_info: &'a AccountInfo<'b>,
+    vault_authority_acc_info: &'a AccountInfo<'b>,
     vesting_acc_info: &'a AccountInfo<'b>,
-    vesting_acc_beneficiary_info: &'a AccountInfo<'b>,
+    beneficiary_info: &'a AccountInfo<'b>,
     mint_acc_info: &'a AccountInfo<'b>,
     token_acc_info: &'a AccountInfo<'b>,
 }
@@ -153,7 +156,7 @@ struct AccessControlRequest<'a, 'b> {
 struct StateTransitionRequest<'a, 'b, 'c> {
     accounts: &'a [AccountInfo<'b>],
     safe_acc_info: &'a AccountInfo<'b>,
-    safe_vault_authority_acc_info: &'a AccountInfo<'b>,
+    vault_authority_acc_info: &'a AccountInfo<'b>,
     mint_acc_info: &'a AccountInfo<'b>,
     token_acc_info: &'a AccountInfo<'b>,
     vesting_acc: &'c mut Vesting,

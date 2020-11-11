@@ -57,6 +57,7 @@ fn lifecycle() {
                 end_ts,
                 period_count,
                 deposit_amount,
+                needs_assignment: None,
             })
             .unwrap();
 
@@ -187,7 +188,7 @@ fn lifecycle() {
             assert_eq!(vault.delegate, COption::None);
 
             // Vesting account should be updated.
-            let vesting = rpc::account_unpacked::<Vesting>(client.rpc(), &vesting);
+            let vesting = rpc::get_account_unchecked::<Vesting>(client.rpc(), &vesting).unwrap();
             assert_eq!(vesting.whitelist_owned, stake_amount);
 
             // Staking program's vault should be incremented.

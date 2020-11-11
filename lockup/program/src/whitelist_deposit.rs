@@ -47,7 +47,7 @@ pub fn handler(
         safe_vault_auth_acc_info,
     })?;
 
-    Vesting::unpack_mut(
+    Vesting::unpack_unchecked_mut(
         &mut vesting_acc_info.try_borrow_mut_data()?,
         &mut |vesting: &mut Vesting| {
             let safe = Safe::unpack(&safe_acc_info.try_borrow_data()?)?;

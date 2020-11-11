@@ -11,6 +11,7 @@ use solana_sdk::pubkey::Pubkey;
 use solana_sdk::sysvar::clock::Clock;
 use spl_token::state::Account as TokenAccount;
 
+#[inline(never)]
 pub fn handler(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -34,7 +35,7 @@ pub fn handler(
     let clock_acc_info = next_account_info(acc_infos)?;
     let vault_acc_info = next_account_info(acc_infos)?;
 
-    let pool = &Pool::parse_accounts(PoolConfig::GetBasket, acc_infos)?;
+    let pool = &Pool::parse_accounts(acc_infos, PoolConfig::GetBasket)?;
 
     let ctx = EntityContext {
         entity_acc_info,

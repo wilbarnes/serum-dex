@@ -49,7 +49,7 @@ pub fn handler(
         amount,
     })?;
 
-    Vesting::unpack_mut(
+    Vesting::unpack_unchecked_mut(
         &mut vesting_acc_info.try_borrow_mut_data()?,
         &mut |vesting: &mut Vesting| {
             state_transition(StateTransitionRequest {

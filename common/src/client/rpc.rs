@@ -275,6 +275,15 @@ pub fn get_account<T: Pack>(client: &RpcClient, addr: &Pubkey) -> Result<T> {
     T::unpack(&account.data).map_err(Into::into)
 }
 
+pub fn get_account_unchecked<T: Pack>(client: &RpcClient, addr: &Pubkey) -> Result<T> {
+    let account = client
+        .get_account_with_commitment(addr, CommitmentConfig::recent())?
+        .value
+        .map_or(Err(anyhow!("Account not found")), Ok)?;
+    let mut data: &[u8] = &account.data;
+    T::unpack_unchecked(&mut data).map_err(Into::into)
+}
+
 // Convenience for testing. Use `get_token_account` otherwise.
 pub fn account_token_unpacked<T: TokenPack>(client: &RpcClient, addr: &Pubkey) -> T {
     get_token_account::<T>(client, addr).unwrap()

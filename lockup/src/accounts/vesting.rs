@@ -9,18 +9,28 @@ lazy_static::lazy_static! {
                 .expect("Vesting has a fixed size");
 }
 
-/// The Vesting account represents a single deposit of a token
-/// available for withdrawal over a period of time determined by
-/// a vesting schedule.
-#[derive(Default, Debug, BorshSerialize, BorshDeserialize, BorshSchema)]
+#[derive(Debug, BorshSerialize, BorshDeserialize, BorshSchema)]
 pub struct Vesting {
     /// True iff the vesting account has been initialized via deposit.
     pub initialized: bool,
+    /// If Some, defines the key whose signature is required to invoke the
+    /// `Assign` instruction.
+    ///
+    /// This is used so that the attainment of locked SRM requires a two
+    /// step process. 1) the locked SRM vesting account needs to be allocated
+    /// and 2) it needs to be assigned to a beneficiary.
+    ///
+    /// For example, the registry program uses this to assign a locked SRM
+    /// vesting account to a beneficiary as soon as all stake is withdrawn.
+    ///
+    /// If None, the beneficiary is fixed and the Vesting account can be used.
+    pub needs_assignment: Option<NeedsAssignment>,
     /// One time token for claiming the vesting account.
     pub claimed: bool,
     /// The Safe instance this account is associated with.
     pub safe: Pubkey,
-    /// The effective owner of this Vesting account.
+    /// The intended owner of this Vesting account. Used only as a marker
+    /// unless the claim_lock has been released. That is, if th
     pub beneficiary: Pubkey,
     /// The outstanding SRM deposit backing this vesting account. All
     /// withdrawals/redemptions will deduct this balance.
@@ -43,6 +53,39 @@ pub struct Vesting {
     pub locked_nft_token: Pubkey,
     /// The amount of tokens in custody of whitelisted programs.
     pub whitelist_owned: u64,
+}
+
+impl Default for Vesting {
+    fn default() -> Vesting {
+        Vesting {
+            initialized: false,
+            needs_assignment: Some(Default::default()),
+            claimed: false,
+            safe: Pubkey::new_from_array([0; 32]),
+            beneficiary: Pubkey::new_from_array([0; 32]),
+            balance: 0,
+            start_balance: 0,
+            start_ts: 0,
+            end_ts: 0,
+            period_count: 0,
+            locked_nft_mint: Pubkey::new_from_array([0; 32]),
+            locked_nft_token: Pubkey::new_from_array([0; 32]),
+            whitelist_owned: 0,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, BorshSerialize, BorshDeserialize, BorshSchema)]
+pub struct NeedsAssignment {
+    // Program derived address that can invoke the `Assign` instruction.
+    pub authority: Pubkey,
+    // Program id for the authority.
+    pub program_id: Pubkey,
+    // Account identifier, e.g., the address of the `Member` account that
+    // earned the staking reward.
+    pub identifier: Pubkey,
+    // Nonce for the authority.
+    pub nonce: u8,
 }
 
 impl Vesting {
@@ -154,15 +197,17 @@ mod tests {
             locked_nft_mint,
             whitelist_owned,
             locked_nft_token,
+            needs_assignment: None,
         };
 
         // When I pack it into a slice.
         let mut dst = vec![];
         dst.resize(Vesting::default().size().unwrap() as usize, 0u8);
-        Vesting::pack(vesting_acc, &mut dst).unwrap();
+        Vesting::pack_unchecked(vesting_acc, &mut dst).unwrap();
 
         // Then I can unpack it from a slice.
-        let va = Vesting::unpack(&dst).unwrap();
+        let mut data: &[u8] = &dst;
+        let va = Vesting::unpack_unchecked(&mut data).unwrap();
         assert_eq!(va.safe, safe);
         assert_eq!(va.beneficiary, beneficiary);
         assert_eq!(va.initialized, initialized);
@@ -203,6 +248,7 @@ mod tests {
             end_ts,
             period_count,
             locked_nft_token,
+            needs_assignment: None,
         };
         assert_eq!(0, vesting_acc.available_for_withdrawal(10));
         assert_eq!(0, vesting_acc.available_for_withdrawal(11));
@@ -217,8 +263,9 @@ mod tests {
     #[test]
     fn unpack_zeroes() {
         let og_size = Vesting::default().size().unwrap();
-        let zero_data = vec![0; og_size as usize];
-        let r = Vesting::unpack(&zero_data).unwrap();
+        let d = vec![0; og_size as usize];
+        let mut zero_data: &[u8] = &d;
+        let r = Vesting::unpack_unchecked(&mut zero_data).unwrap();
         assert_eq!(r.initialized, false);
         assert_eq!(r.safe, Pubkey::new(&[0; 32]));
         assert_eq!(r.beneficiary, Pubkey::new(&[0; 32]));

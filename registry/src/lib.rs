@@ -62,13 +62,13 @@ pub mod instruction {
         /// 2. `[]`         Entity to join.
         /// 3. `[]`         Registrar.
         /// 4. `[]`         Rent sysvar.
-        CreateMember { delegate: Pubkey },
+        CreateMember { delegate: Pubkey, nonce: u8 },
         /// Accounts:
         ///
         /// 0. `[writable]` Member.
         /// 1. `[signer]`   Beneficiary.
         UpdateMember {
-            /// Delegate can only be updated if the delegate's balance is 0.
+            /// Delegate's OriginalDeposit must be 0.
             delegate: Option<Pubkey>,
         },
         /// Accounts:
@@ -84,7 +84,7 @@ pub mod instruction {
         SwitchEntity,
         /// Accounts:
         ///
-        /// Lockup whitelist relay interface (from lockup program):
+        /// Lockup whitelist relay interface (funds flow *from* lockup program):
         ///
         /// 0. `[writable]`  Depositor token account.
         /// 1. `[]`          Depositor token authority.
@@ -104,7 +104,7 @@ pub mod instruction {
         Deposit { amount: u64 },
         /// Accounts:
         ///
-        /// Lockup whitelist relay interface (to lockup program):
+        /// Lockup whitelist relay interface (funds flow *to* lockup program):
         ///
         /// 0. `[writable]`  Depositor token account.
         /// 1. `[]`          Depositor token authority.
@@ -168,6 +168,14 @@ pub mod instruction {
         /// 4. `[]`         Registrar.
         /// 5. `[]`         Clock.
         EndStakeWithdrawal,
+        /// Accounts:
+        ///
+        /// 0. `[]          Member.
+        /// 1. `[]`         Entity.
+        /// 2. `[]`         Registrar.
+        /// 3. `[]`         Lockup program.
+        /// 4. `[writable]` Vesting.
+        AssignVesting,
         /// Accounts:
         ///
         /// 0. `[signer]`   Registrar authority.
